@@ -8,6 +8,8 @@ export interface Context {
   /** `folder`: shows «Abrir carpeta» next to the notice, for a save that worked. */
   notify(text: string | null, folder?: SavedFolder): void;
   openFolder(folder: SavedFolder): void;
+  /** Brings WhatsApp to the front; a failure is shown as a notice. */
+  openWhatsapp(): void;
   entry(id: number): EntryUi | undefined;
   remember(entry: EntryUi): void;
   forget(id: number): void;

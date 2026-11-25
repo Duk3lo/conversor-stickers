@@ -369,6 +369,19 @@ class AndroidBridge(private val activity: Activity) : Plugin(activity) {
     } catch (_: ActivityNotFoundException) {}
   }
 
+  /**
+   * Brings WhatsApp to the front, so the user can pick the saved video under Stickers. Tries the
+   * regular app first, then Business. Rejects if neither can be launched.
+   */
+  @Command
+  fun open_whatsapp(invoke: Invoke) {
+    val opened =
+      WhatsappLaunch.firstOpened(WhatsappLaunch.PACKAGES) { pack ->
+        activity.packageManager.getLaunchIntentForPackage(pack)?.let { start(it) } ?: false
+      }
+    if (opened != null) invoke.resolve() else invoke.reject("No se encontró WhatsApp instalado")
+  }
+
   @ActivityCallback
   fun addResult(invoke: Invoke, result: ActivityResult) {
     val error = result.data?.getStringExtra("validation_error")

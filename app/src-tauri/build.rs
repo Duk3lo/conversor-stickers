@@ -61,6 +61,7 @@ const COMMANDS: &[&str] = &[
     "send_result_to_whatsapp",
     "send_sticker_to_whatsapp",
     "open_saved_folder",
+    "open_whatsapp",
 ];
 
 // The KLIPY key is baked in as `BUNDLED_KLIPY_KEY` only if the build sets `KLIPY_KEY` explicitly

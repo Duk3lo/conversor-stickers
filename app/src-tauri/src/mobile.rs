@@ -590,6 +590,24 @@ pub(crate) fn open_saved_folder(app: &AppHandle, kind: &'static str) -> Result<(
     }
 }
 
+/// Brings WhatsApp to the front so the user can pick the saved video in its stickers.
+pub(crate) fn open_whatsapp(app: &AppHandle) -> Result<(), UiError> {
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err(android_only())
+    }
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+
+        app.state::<AndroidBridge>()
+            .0
+            .run_mobile_plugin::<()>("open_whatsapp", ())
+            .map_err(|failure| UiError::new(UiErrorKind::Other, failure.to_string()))
+    }
+}
+
 pub(crate) fn android_only() -> UiError {
     UiError::new(UiErrorKind::Other, "solo está disponible en Android")
 }

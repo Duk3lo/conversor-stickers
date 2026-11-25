@@ -377,6 +377,13 @@ pub(crate) async fn open_saved_folder(kind: String, app: AppHandle) -> Result<()
     in_background(move || mobile::open_saved_folder(&app, kind)).await
 }
 
+/// Brings WhatsApp to the front after a clip was saved as a video.
+#[tauri::command]
+pub(crate) async fn open_whatsapp(app: AppHandle) -> Result<(), UiError> {
+    require_android()?;
+    in_background(move || mobile::open_whatsapp(&app)).await
+}
+
 #[tauri::command]
 pub(crate) async fn preview_path(
     id: u32,

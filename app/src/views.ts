@@ -180,6 +180,7 @@ export interface EditorActions {
   saveSound(): void;
   saveClipVideo(): void;
   openFolder(folder: SavedFolder): void;
+  openWhatsapp(): void;
   share(): void;
   sendToWhatsapp(): void;
   addPack(id: number): void;

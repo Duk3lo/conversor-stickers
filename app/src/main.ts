@@ -6,7 +6,7 @@ import type { EntryUi } from "./contract.ts";
 import { asErrorUi } from "./contract.ts";
 import { backAction } from "./mobile.ts";
 import { platform } from "./platform.ts";
-import { openSavedFolder } from "./contract-mobile.ts";
+import { openSavedFolder, openWhatsapp } from "./contract-mobile.ts";
 import { errorMessage } from "./messages.ts";
 import type { SavedFolder } from "./saved-folder.ts";
 import { back, changeSection, goToRoot, type Navigation, initialNavigation } from "./navigation.ts";
@@ -58,6 +58,9 @@ function startApp(): void {
     },
     openFolder(folder) {
       openSavedFolder(folder).catch((failure: unknown) => context.notify(errorMessage(asErrorUi(failure))));
+    },
+    openWhatsapp() {
+      openWhatsapp().catch((failure: unknown) => context.notify(errorMessage(asErrorUi(failure))));
     },
     entry: (id) => entries.get(id),
     remember: (entry) => void entries.set(entry.id, entry),

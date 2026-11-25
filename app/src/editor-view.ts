@@ -37,7 +37,7 @@ import {
   zoomText,
 } from "./framing.ts";
 import { errorMessage } from "./messages.ts";
-import { canSaveClipVideo, clipVideoText } from "./clip-video.ts";
+import { canSaveClipVideo, clipVideoText, openWhatsappVisible } from "./clip-video.ts";
 import { soundText } from "./sound.ts";
 import { folderButtonVisible } from "./saved-folder.ts";
 import { playableNoVideoReason } from "./mobile.ts";
@@ -138,6 +138,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   const soundButton = element<HTMLButtonElement>("save-sound");
   const soundState = element<HTMLParagraphElement>("sound-state");
   const clipVideoFolder = element<HTMLButtonElement>("clip-video-folder");
+  const openWhatsappButton = element<HTMLButtonElement>("open-whatsapp");
   const soundFolder = element<HTMLButtonElement>("sound-folder");
   const announcement = element<HTMLParagraphElement>("announcement");
   const createError = element<HTMLDivElement>("error-create");
@@ -332,6 +333,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   createWithSoundButton.addEventListener("click", () => actions.saveClipVideo());
   soundButton.addEventListener("click", () => actions.saveSound());
   clipVideoFolder.addEventListener("click", () => actions.openFolder("videos"));
+  openWhatsappButton.addEventListener("click", () => actions.openWhatsapp());
   soundFolder.addEventListener("click", () => actions.openFolder("sounds"));
   shareButton.addEventListener("click", () => actions.share());
   sendWhatsappButton.addEventListener("click", () => actions.sendToWhatsapp());
@@ -824,6 +826,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     soundState.classList.toggle("message-error", v.sound.kind === "failed");
     soundState.textContent = soundText(v.sound);
     clipVideoFolder.hidden = !folderButtonVisible(platform, v.clipVideo.kind === "saved" ? "videos" : null);
+    openWhatsappButton.hidden = !openWhatsappVisible(platform, v.clipVideo);
     soundFolder.hidden = !folderButtonVisible(platform, v.sound.kind === "saved" ? "sounds" : null);
     editorPanel.dataset["mode"] = v.mode;
     for (const entry of modeSwitch.querySelectorAll<HTMLInputElement>("input")) entry.checked = entry.value === v.mode;

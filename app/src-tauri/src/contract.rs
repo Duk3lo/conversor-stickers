@@ -655,6 +655,7 @@ mod tests {
             "send_result_to_whatsapp",
             "send_sticker_to_whatsapp",
             "open_saved_folder",
+            "open_whatsapp",
         ]
         .contains(command)
     }
@@ -669,7 +670,7 @@ mod tests {
         assert_eq!(registered, declared);
 
         let (mobile, desktop): (Vec<_>, Vec<_>) = declared.into_iter().partition(is_mobile_command);
-        assert_eq!(mobile.len(), 9);
+        assert_eq!(mobile.len(), 10);
 
         let capability: Value =
             serde_json::from_str(include_str!("../capabilities/main.json")).unwrap();

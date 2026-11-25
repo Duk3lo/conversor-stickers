@@ -143,6 +143,7 @@ pub fn run() {
             commands_mobile::send_result_to_whatsapp,
             commands_mobile::send_sticker_to_whatsapp,
             commands_mobile::open_saved_folder,
+            commands_mobile::open_whatsapp,
         ])
         .build(tauri::generate_context!());
     let app = match app {

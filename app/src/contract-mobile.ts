@@ -43,3 +43,7 @@ export function receiveShared(): Promise<EntryUi[]> {
 export function openSavedFolder(kind: SavedFolder): Promise<void> {
   return call("open_saved_folder", { kind });
 }
+
+export function openWhatsapp(): Promise<void> {
+  return call("open_whatsapp");
+}

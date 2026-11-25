@@ -482,6 +482,7 @@ export async function startDemo(initial: string | null): Promise<void> {
       repaint();
     },
     openFolder: register("abrir carpeta"),
+    openWhatsapp: register("abrir WhatsApp"),
     entry: () => undefined,
     remember: () => undefined,
     forget: () => undefined,
@@ -545,6 +546,7 @@ export async function startDemo(initial: string | null): Promise<void> {
     saveSound: register("guardar sonido"),
     saveClipVideo: register("guardar vídeo para sticker"),
     openFolder: register("abrir carpeta"),
+    openWhatsapp: register("abrir WhatsApp"),
     share: register("compartir"),
     sendToWhatsapp: register("enviar a WhatsApp"),
     addPack: register("añadir al paquete"),

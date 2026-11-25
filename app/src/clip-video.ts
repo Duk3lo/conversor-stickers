@@ -13,6 +13,11 @@ export function canSaveClipVideo(platform: Platform, destination: string, media:
   return platform === "android" && destination === "sticker" && media.kind === "video";
 }
 
+/** «Abrir WhatsApp» shows once the clip is saved, and only on Android, where WhatsApp can be opened. */
+export function openWhatsappVisible(platform: Platform, state: ClipVideoState): boolean {
+  return platform === "android" && state.kind === "saved";
+}
+
 export function clipVideoText(state: ClipVideoState): string {
   switch (state.kind) {
     case "saving":

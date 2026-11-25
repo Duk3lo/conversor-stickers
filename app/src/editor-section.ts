@@ -586,6 +586,7 @@ export function createEditorSection(
     saveSound: () => void saveSound(),
     saveClipVideo: () => void saveClipVideo(),
     openFolder: (folder) => context.openFolder(folder),
+    openWhatsapp: () => context.openWhatsapp(),
     share: () => void share(),
     sendToWhatsapp: () => void sendToWhatsapp(),
     addPack: (id) => void addPack(id),
