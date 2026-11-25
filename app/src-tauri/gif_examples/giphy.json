@@ -1,0 +1,36 @@
+{
+  "data": [
+    {
+      "type": "gif",
+      "id": "xT9IgzoKnwFNmISR8I",
+      "title": "Cat GIF",
+      "images": {
+        "original": {
+          "url": "https://media1.giphy.com/media/xT9/giphy.gif",
+          "mp4": "https://media1.giphy.com/media/xT9/giphy.mp4",
+          "width": "480",
+          "height": "384"
+        },
+        "fixed_width": {
+          "url": "https://media1.giphy.com/media/xT9/200w.gif",
+          "mp4": "https://media1.giphy.com/media/xT9/200w.mp4",
+          "width": "200",
+          "height": "160"
+        },
+        "fixed_width_small": {
+          "url": "https://media1.giphy.com/media/xT9/100w.gif",
+          "width": "100",
+          "height": "80"
+        }
+      }
+    },
+    {
+      "type": "gif",
+      "id": "sin-imagenes",
+      "title": "Sin renditions",
+      "images": {}
+    }
+  ],
+  "pagination": { "total_count": 200, "count": 24, "offset": 24 },
+  "meta": { "status": 200, "msg": "OK", "response_id": "abc" }
+}

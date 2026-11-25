@@ -1,0 +1,47 @@
+[package]
+name = "conversor-app"
+description = "App de escritorio para convertir videos en stickers o GIF"
+version.workspace = true
+edition.workspace = true
+# Tauri 2.12 needs Rust 1.90; the rest of the workspace stays on 1.88.
+rust-version = "1.90"
+license.workspace = true
+publish = false
+
+[lib]
+name = "conversor_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+conversor-core.workspace = true
+tauri.workspace = true
+tauri-plugin-dialog.workspace = true
+serde.workspace = true
+# The pack library index.
+serde_json.workspace = true
+# Import and export of `.wastickers`.
+zip.workspace = true
+# Community catalog: index, download and proposing a pack.
+ureq.workspace = true
+# The session temp directory, where ffmpeg leaves the preview.
+tempfile.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+# SIGINT, SIGTERM and SIGHUP close through the normal path, which kills yt-dlp.
+ctrlc.workspace = true
+
+[target.'cfg(target_os = "android")'.dependencies]
+# Opens the content:// URIs of the picker. No permissions for the webview.
+tauri-plugin-fs.workspace = true
+
+[dev-dependencies]
+# Builds animated WebP stickers in the library tests; the core already uses it, so it adds no
+# crate to `Cargo.lock`.
+webp-animation.workspace = true
+
+[lints]
+workspace = true

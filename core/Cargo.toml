@@ -1,0 +1,36 @@
+[package]
+name = "conversor-core"
+description = "Core of the video-to-sticker/GIF converter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+thiserror.workspace = true
+tracing.workspace = true
+rayon.workspace = true
+webp-animation.workspace = true
+gif.workspace = true
+color_quant.workspace = true
+fast_image_resize.workspace = true
+png.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+rustix.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+criterion.workspace = true
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "conversion"
+harness = false

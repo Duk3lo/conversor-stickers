@@ -1,0 +1,48 @@
+{
+  "result": true,
+  "data": {
+    "data": [
+      {
+        "id": 6914457558367152,
+        "slug": "grrr-rawr-sticker",
+        "title": "Grrr Rawr Sticker",
+        "file": {
+          "md": {
+            "gif": { "url": "https://static.klipy.com/ii/ffd4/md.gif", "width": 189, "height": 200, "size": 19826 },
+            "webp": { "url": "https://static.klipy.com/ii/ffd4/md.webp", "width": 189, "height": 200, "size": 23404 },
+            "webm": { "url": "https://static.klipy.com/ii/ffd4/md.webm", "width": 189, "height": 200, "size": 46014 },
+            "png": { "url": "https://static.klipy.com/ii/ffd4/md.png", "width": 189, "height": 200, "size": 3178 }
+          },
+          "sm": {
+            "gif": { "url": "https://static.klipy.com/ii/ffd4/sm.gif", "width": 189, "height": 200, "size": 19826 },
+            "webp": { "url": "https://static.klipy.com/ii/ffd4/sm.webp", "width": 189, "height": 200, "size": 16260 },
+            "webm": { "url": "https://static.klipy.com/ii/ffd4/sm.webm", "width": 189, "height": 200, "size": 46014 },
+            "png": { "url": "https://static.klipy.com/ii/ffd4/sm.png", "width": 189, "height": 200, "size": 3178 }
+          }
+        },
+        "type": "sticker"
+      },
+      {
+        "id": 77,
+        "title": "Fijo",
+        "file": {
+          "md": { "png": { "url": "https://static.klipy.com/ii/aa/md.png", "width": 100, "height": 100, "size": 900 } },
+          "sm": { "png": { "url": "https://static.klipy.com/ii/aa/sm.png", "width": 50, "height": 50, "size": 400 } }
+        },
+        "type": "sticker"
+      },
+      {
+        "id": 78,
+        "title": "Host ajeno",
+        "file": {
+          "sm": { "png": { "url": "https://ejemplo.com/sm.png", "width": 50, "height": 50, "size": 400 } },
+          "md": { "png": { "url": "https://ejemplo.com/md.png", "width": 50, "height": 50, "size": 400 } }
+        },
+        "type": "sticker"
+      }
+    ],
+    "current_page": 1,
+    "per_page": 24,
+    "has_next": true
+  }
+}

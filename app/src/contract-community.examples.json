@@ -1,0 +1,105 @@
+{
+  "community_pack_ui": {
+    "id": "gatos-garabato",
+    "version": 2,
+    "name": "Gatos garabato",
+    "author": "Ana",
+    "license": "CC-BY-4.0",
+    "category": "animales",
+    "tags": [
+      "gato",
+      "garabato"
+    ],
+    "animated": false,
+    "added": "2026-11-22",
+    "stickers": 3,
+    "icon": "/cache/comunidad/archivos/ab12.png",
+    "downloaded": 7,
+    "updatable": true
+  },
+  "community_pack_not_downloaded": {
+    "id": "gatos-garabato",
+    "version": 2,
+    "name": "Gatos garabato",
+    "author": "Ana",
+    "license": "CC-BY-4.0",
+    "category": "animales",
+    "tags": [
+      "gato",
+      "garabato"
+    ],
+    "animated": false,
+    "added": "2026-11-22",
+    "stickers": 3,
+    "icon": null,
+    "downloaded": null,
+    "updatable": false
+  },
+  "catalog_ui": {
+    "categories": [
+      {
+        "id": "animales",
+        "name": "Animales"
+      }
+    ],
+    "packs": [
+      {
+        "id": "gatos-garabato",
+        "version": 2,
+        "name": "Gatos garabato",
+        "author": "Ana",
+        "license": "CC-BY-4.0",
+        "category": "animales",
+        "tags": [
+          "gato",
+          "garabato"
+        ],
+        "animated": false,
+        "added": "2026-11-22",
+        "stickers": 3,
+        "icon": "/cache/comunidad/archivos/ab12.png",
+        "downloaded": 7,
+        "updatable": true
+      }
+    ],
+    "updated": 1763800000,
+    "offline": false,
+    "notice_accepted": true
+  },
+  "community_detail_ui": {
+    "pack": {
+      "id": "gatos-garabato",
+      "version": 2,
+      "name": "Gatos garabato",
+      "author": "Ana",
+      "license": "CC-BY-4.0",
+      "category": "animales",
+      "tags": [
+        "gato",
+        "garabato"
+      ],
+      "animated": false,
+      "added": "2026-11-22",
+      "stickers": 3,
+      "icon": "/cache/comunidad/archivos/ab12.png",
+      "downloaded": 7,
+      "updatable": true
+    },
+    "stickers": [
+      {
+        "path": "/cache/comunidad/archivos/cd34.webp",
+        "emojis": [
+          "🐱"
+        ]
+      }
+    ]
+  },
+  "progress_downloading": {
+    "kind": "downloading",
+    "done": 2,
+    "total": 4
+  },
+  "progress_verifying": {
+    "kind": "verifying"
+  }
+}

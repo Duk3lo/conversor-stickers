@@ -1,0 +1,26 @@
+[package]
+name = "conversor-stickers"
+description = "CLI that converts a local video into a sticker or GIF"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+conversor-core.workspace = true
+clap.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+indicatif.workspace = true
+ctrlc.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+webp-animation.workspace = true
+gif.workspace = true
+png.workspace = true
+
+[lints]
+workspace = true

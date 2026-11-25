@@ -1,0 +1,19 @@
+{
+  "name": "conversor-stickers-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "license": "MIT OR Apache-2.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "tsc --noEmit && node --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.5"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.3.8"
+  }
+}

@@ -1,0 +1,9 @@
+# FFmpeg that ships inside the Android app. build.sh reads it.
+# SHA256 was recorded after verifying the signature on 2026-11-22 (signed on 2026-11-20).
+VERSION=9.1
+URL=https://ffmpeg.org/releases/ffmpeg-9.1.tar.xz
+SHA256=1a4d394ae63d190a526cd052eb4415c156b5c5e2df37efab41a7de0b8fde2433
+KEY_URL=https://ffmpeg.org/ffmpeg-devel.asc
+FINGERPRINT=FCF986EA15E6E293A5644F10B4322F04D67658D8
+NDK=30.0.16248370
+ANDROID_API=24

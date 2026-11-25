@@ -1,0 +1,53 @@
+# ./configure flags common to the three targets. One per line; anything after '#' is ignored.
+# build.sh adds only the target ones (compiler, architecture and system) and fails if
+# --enable-gpl, --enable-nonfree or --enable-version3 appears: FFmpeg stays LGPL 2.1 or later.
+
+--disable-everything
+--disable-autodetect
+--disable-network
+--disable-doc
+--disable-ffplay
+--enable-ffmpeg
+--enable-ffprobe
+--enable-static
+--disable-shared
+--enable-pic
+# Needed by the PNG decoder and used by mov and matroska for compressed headers.
+--enable-zlib
+
+--enable-protocol=file,pipe
+
+# Video containers of the VIDEO_FORMATS allow list and image containers of IMAGE_FORMATS, in
+# core/src/decoding.rs.
+--enable-demuxer=mov,matroska,avi,gif,flv,mpegts,mpegps,ogg,asf
+# Raw stream demuxers: MPEG-PS uses them to find out the codec of each track; the format allow
+# list prevents opening a file with them.
+--enable-demuxer=mpegvideo,m4v,h264,hevc
+# Audio-only files that yt-dlp may download next to the video to merge with it.
+--enable-demuxer=aac,mp3
+--enable-demuxer=image_png_pipe,image_jpeg_pipe,image_webp_pipe,webp_anim,image_bmp_pipe
+
+--enable-decoder=h264,hevc,vp8,vp9,mpeg4,mpeg1video,mpeg2video,mjpeg,theora
+--enable-decoder=png,webp,webp_anim,bmp,gif
+# Audio decoders, not to play but because FFmpeg only learns the sample rate and channels of ADTS
+# AAC and MP3 (MPEG-TS, HLS) by decoding the first frame, and the mp4 muxer refuses a stream without
+# them. Nothing decodes audio in the app: stream copy never calls them.
+--enable-decoder=aac,mp3float
+--enable-parser=h264,hevc,vp8,vp9,mpeg4video,mpegvideo,mjpeg,png,webp,bmp,gif
+# Stream copy into mp4/matroska needs the parser of every codec it can carry (frame boundaries and
+# extradata); there are no new decoders or encoders for them.
+--enable-parser=av1,aac,aac_latm,ac3,opus,vorbis,mpegaudio,flac
+
+# The filter chain; transpose, hflip, vflip and rotate are the autorotate ones. pad, split, overlay,
+# gblur and geq are the framing ones (bands, blurred background and shape masks, see
+# FramingSpec::canvas_filter in core/src/framing_spec.rs).
+--enable-filter=scale,setsar,setpts,fps,crop,format,null,transpose,hflip,vflip,rotate
+--enable-filter=pad,split,overlay,gblur,geq
+
+--enable-encoder=rawvideo,pam
+--enable-muxer=rawvideo,image2pipe
+
+# Stream-copy muxing only ("save video": yt-dlp joins the video and audio it downloaded without
+# re-encoding). aac_adtstoasc turns ADTS AAC (MPEG-TS, HLS) into what mp4 stores.
+--enable-muxer=mp4,mov,matroska,webm
+--enable-bsf=aac_adtstoasc,extract_extradata

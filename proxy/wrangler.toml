@@ -1,0 +1,13 @@
+name = "conversor-stickers-proxy"
+main = "src/index.js"
+compatibility_date = "2026-11-23"
+
+# Per-IP limit: 60 requests per 60 s (period must be 10 or 60), per Cloudflare location.
+# The current syntax of the Rate Limiting binding (wrangler >= 4.36).
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60

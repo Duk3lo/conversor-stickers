@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "android",
+  "description": "Android only. The WhatsApp, paste and preview commands are granted here, not in main.json. The back button needs a system listener, so the core app permissions are the exception; `exit` is needed because with the listener registered the app must exit by hand at the root.",
+  "windows": ["main"],
+  "platforms": ["android"],
+  "permissions": [
+    "core:app:allow-register-listener",
+    "core:app:allow-remove-listener",
+    "core:app:allow-exit",
+    "allow-add-to-whatsapp",
+    "allow-paste-from-clipboard",
+    "allow-preview-path",
+    "allow-receive-shared",
+    "allow-share-sticker",
+    "allow-share-result",
+    "allow-send-result-to-whatsapp",
+    "allow-send-sticker-to-whatsapp",
+    "allow-open-saved-folder"
+  ]
+}

@@ -1,0 +1,80 @@
+[workspace]
+members = ["core", "cli", "app/src-tauri"]
+resolver = "3"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+conversor-core = { path = "core" }
+
+# Núcleo
+thiserror = "2.0.21"
+tracing = "0.1.44"
+rustix = { version = "1.1.6", features = ["process"] }
+rayon = "1.12.0"
+# `static` compila la libwebp 1.5.0 incluida en libwebp-sys2, así local y
+# CI usan la misma versión y los bytes de salida no dependen del sistema.
+webp-animation = { version = "0.10.0", features = ["static"] }
+gif = "0.14.2"
+color_quant = "2.0.0"
+fast_image_resize = "6.1.0"
+png = "0.18.1"
+# Catálogo de la comunidad (D52): el índice JSON y las sumas de los archivos.
+# Las tres ya estaban en `Cargo.lock` por Tauri.
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
+
+# CLI
+clap = { version = "4.6.7", features = ["derive"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+indicatif = "0.18.6"
+# `termination`: SIGTERM y SIGHUP también cancelan, no solo Ctrl-C.
+ctrlc = { version = "3.5.2", features = ["termination"] }
+
+# App de escritorio
+tauri = { version = "2.12.7", features = ["protocol-asset"] }
+tauri-build = "2.7.6"
+tauri-plugin-dialog = "2.8.4"
+# Solo en Android (D38): abre las URI content:// que devuelve el selector.
+tauri-plugin-fs = "2.7.1"
+# `.wastickers` (D30): solo DEFLATE con zlib-rs; sin AES, bzip2, zstd, lzma
+# ni `time` (la fecha de las entradas es fija para que exportar sea
+# reproducible).
+zip = { version = "9.8.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+# Cliente del catálogo de la comunidad (D54). `reqwest` con rustls añadía
+# unas 40 entradas a `Cargo.lock` (aws-lc-rs con cmake, quinn, tokio-rustls,
+# jni, security-framework…); `ureq` con rustls añade 11 (ring, rustls,
+# webpki…) y es bloqueante, como el resto del acceso a disco de la app. Sin `gzip` ni cookies: el catálogo es JSON y archivos.
+ureq = { version = "3.4.2", default-features = false, features = ["rustls"] }
+
+# Desarrollo
+proptest = "1.12.0"
+criterion = "0.8.2"
+tempfile = "3.27.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+dbg_macro = "deny"
+todo = "deny"
+print_stdout = "warn"
+
+# Sin optimizar, los codificadores (libwebp, gif, NeuQuant, escalado) y los
+# bucles del núcleo hacen que cada conversión de prueba tarde decenas de
+# segundos. Medido con `cargo test --test conversion`: 110 s sin esto, 27 s
+# optimizando las dependencias y 20 s optimizando también el núcleo.
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev.package.conversor-core]
+opt-level = 2

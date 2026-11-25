@@ -1,0 +1,15 @@
+{
+  "name": "conversor-stickers-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker that holds the KLIPY key for conversor-stickers",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.167.0"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "gif_provider_ui": {
+    "provider": "klipy",
+    "key_set": true,
+    "key_origin": "bundled"
+  },
+  "gif_provider_proxy": {
+    "provider": "klipy",
+    "key_set": true,
+    "key_origin": "proxy"
+  },
+  "gif_provider_unset": {
+    "provider": null,
+    "key_set": false,
+    "key_origin": null
+  },
+  "gif_provider_giphy": "giphy",
+  "gifs_page_ui": {
+    "results": [
+      {
+        "id": "8041071659142944",
+        "title": "Hello",
+        "thumbnail": "/cache/gifs/miniaturas/klipy-8041071659142944.webp",
+        "width": 220,
+        "height": 220
+      }
+    ],
+    "next": 2,
+    "attribution": "Powered by KLIPY"
+  },
+  "gifs_page_last": {
+    "results": [],
+    "next": null,
+    "attribution": "Powered by GIPHY"
+  },
+  "stickers_page_ui": {
+    "results": [
+      {
+        "id": "6914457558367152",
+        "title": "Grrr Rawr Sticker",
+        "thumbnail": "/cache/gifs/stickers/miniaturas/klipy-6914457558367152.webp",
+        "animated": true
+      }
+    ],
+    "next": 2
+  },
+  "klipy_categories_ui": [
+    {
+      "id": "smile",
+      "name": "Smile"
+    }
+  ]
+}

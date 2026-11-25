@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: ci
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # Para compilar la app Tauri.
+      - name: Instalar dependencias del sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev \
+            libssl-dev libxdo-dev libayatana-appindicator3-dev
+
+      # Las pruebas necesitan FFmpeg 9: el 8 de Ubuntu no decodifica WebP
+      # animado. Compilación LGPL de BtbN fijada por fecha y por SHA-256.
+      - name: Instalar FFmpeg 9
+        env:
+          FFMPEG_TAG: autobuild-2026-11-22-12-36
+          FFMPEG_ARCHIVO: ffmpeg-n9.0.2-61-gd59078794d-linux64-lgpl-9.0.tar.xz
+          FFMPEG_SHA256: 55a473197245d5598490cfcdd6de43df78993c07823d9091d080e51bb61a546a
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/ffmpeg.tar.xz" \
+            "https://github.com/BtbN/FFmpeg-Builds/releases/download/$FFMPEG_TAG/$FFMPEG_ARCHIVO"
+          echo "$FFMPEG_SHA256  $RUNNER_TEMP/ffmpeg.tar.xz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/ffmpeg"
+          tar -xJf "$RUNNER_TEMP/ffmpeg.tar.xz" -C "$RUNNER_TEMP/ffmpeg" --strip-components=1
+          echo "$RUNNER_TEMP/ffmpeg/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/ffmpeg/bin/ffmpeg" -version
+          "$RUNNER_TEMP/ffmpeg/bin/ffprobe" -version
+
+      - name: Formato
+        run: cargo fmt --all --check
+      # Antes de clippy: `generate_context!` exige que `app/dist` exista.
+      - name: Interfaz de la app
+        working-directory: app
+        run: |
+          npm ci
+          npm run check
+          npm run build
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+      - name: Tests
+        run: cargo test --all-features --locked
+
+  proxy:
+    name: proxy
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: proxy/package-lock.json
+      - name: Pruebas del proxy
+        working-directory: proxy
+        run: |
+          npm ci
+          npm test

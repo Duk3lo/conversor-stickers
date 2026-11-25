@@ -1,0 +1,11 @@
+{
+  "result": true,
+  "data": {
+    "locale": "en_US",
+    "categories": [
+      { "category": "smile", "query": "smile", "preview_url": "https://static.klipy.com/ii/e293/smile.gif" },
+      { "category": "Me gusta", "query": "me gusta", "preview_url": "https://static.klipy.com/ii/e293/gusta.gif" },
+      { "category": "vacía", "query": "   ", "preview_url": "https://static.klipy.com/ii/e293/vacia.gif" }
+    ]
+  }
+}

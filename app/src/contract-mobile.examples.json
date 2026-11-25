@@ -1,0 +1,43 @@
+{
+  "index": {
+    "version": 1,
+    "packs": [
+      {
+        "id": "pack_3",
+        "name": "Gatos",
+        "author": "Conversor de stickers",
+        "animated": true,
+        "image_version": "4",
+        "tray": "tray.png",
+        "stickers": [
+          {
+            "file": "01.webp",
+            "emojis": [
+              "🙂"
+            ]
+          },
+          {
+            "file": "02.webp",
+            "emojis": [
+              "🙂"
+            ]
+          },
+          {
+            "file": "03.webp",
+            "emojis": [
+              "🙂"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "whatsapp_result_added": {
+    "result": "added",
+    "notice": null
+  },
+  "whatsapp_result_cancelled": {
+    "result": "cancelled",
+    "notice": null
+  }
+}

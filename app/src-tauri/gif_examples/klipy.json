@@ -1,0 +1,34 @@
+{
+  "result": true,
+  "data": {
+    "data": [
+      {
+        "id": 8041071659142944,
+        "slug": "hello-hi-662",
+        "title": "Hello",
+        "file": {
+          "md": {
+            "gif": { "url": "https://static.klipy.com/ii/935d/md.gif", "width": 498, "height": 498, "size": 3721260 },
+            "mp4": { "url": "https://static.klipy.com/ii/935d/md.mp4", "width": 498, "height": 498, "size": 119294 }
+          },
+          "sm": {
+            "gif": { "url": "https://static.klipy.com/ii/935d/sm.gif", "width": 220, "height": 220, "size": 314884 },
+            "webp": { "url": "https://static.klipy.com/ii/935d/sm.webp", "width": 220, "height": 220, "size": 80118 },
+            "mp4": { "url": "https://static.klipy.com/ii/935d/sm.mp4", "width": 320, "height": 320, "size": 49565 }
+          }
+        },
+        "tags": ["hello"],
+        "type": "gif",
+        "blur_preview": "data:image/jpeg;base64,/9j//gAQ"
+      },
+      {
+        "id": 1,
+        "title": "Sin formatos usables",
+        "file": { "hd": { "jpg": { "url": "https://static.klipy.com/ii/x/hd.jpg", "width": 10, "height": 10, "size": 1 } } }
+      }
+    ],
+    "current_page": 2,
+    "per_page": 24,
+    "has_next": true
+  }
+}

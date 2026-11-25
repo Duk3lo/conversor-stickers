@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Conversor de stickers</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/mobile.css" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <svg class="hidden" aria-hidden="true">
+      <symbol id="icon-sticker" viewBox="0 0 24 24">
+        <path d="M14.5 3H8a5 5 0 0 0-5 5v8a5 5 0 0 0 5 5h4.5L21 12.5V8a5 5 0 0 0-5-5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+        <path d="M21 12.5h-4a4.5 4.5 0 0 0-4.5 4.5v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+        <circle cx="9" cy="10" r="1.3" fill="currentColor" />
+        <circle cx="14.5" cy="10" r="1.3" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-gif" viewBox="0 0 24 24">
+        <rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M10 10h-2.2a1.3 1.3 0 0 0-1.3 1.3v1.4A1.3 1.3 0 0 0 7.8 14H10v-2H8.6M12.5 10v4M15.5 14v-4h2.5M15.5 12h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24">
+        <path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-video" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M10 9.5v5l4.5-2.5z" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-image" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2" />
+        <circle cx="9" cy="9.5" r="1.8" fill="currentColor" />
+        <path d="M4 17.5l5-4.5 3.5 3 3-2.5 4.5 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-paste" viewBox="0 0 24 24">
+        <path d="M9 4.5H7a2 2 0 0 0-2 2V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6.5a2 2 0 0 0-2-2h-2" fill="none" stroke="currentColor" stroke-width="2" />
+        <rect x="9" y="3" width="6" height="3.5" rx="1" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="icon-link" viewBox="0 0 24 24">
+        <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-back" viewBox="0 0 24 24">
+        <path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-import" viewBox="0 0 24 24">
+        <path d="M12 3v11m0 0l-4-4m4 4l4-4M4 15v3a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-export" viewBox="0 0 24 24">
+        <path d="M12 14V3m0 0L8 7m4-4l4 4M4 15v3a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-delete" viewBox="0 0 24 24">
+        <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-edit" viewBox="0 0 24 24">
+        <path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24">
+        <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-ok" viewBox="0 0 24 24">
+        <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-notice" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M12 7.5v5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        <circle cx="12" cy="16.5" r="1.3" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-info" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M12 11v5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        <circle cx="12" cy="7.5" r="1.3" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-save" viewBox="0 0 24 24">
+        <path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-create" viewBox="0 0 24 24">
+        <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-start" viewBox="0 0 24 24">
+        <path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2h-3.5v-5.5h-5V21H6a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-community" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9S14.6 18.4 12 21c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-favorite" viewBox="0 0 24 24">
+        <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-favorite-full" viewBox="0 0 24 24">
+        <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-packs" viewBox="0 0 24 24">
+        <path d="M12 3l8.5 4.5v9L12 21l-8.5-4.5v-9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+        <path d="M3.5 7.5L12 12l8.5-4.5M12 12v9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M16 16l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-next" viewBox="0 0 24 24">
+        <path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-emoji" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M8.5 14c.9 1.4 2.1 2 3.5 2s2.6-.6 3.5-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <circle cx="9" cy="10" r="1.2" fill="currentColor" />
+        <circle cx="15" cy="10" r="1.2" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-left" viewBox="0 0 24 24">
+        <path d="M19 12H5m0 0l5-5m-5 5l5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-right" viewBox="0 0 24 24">
+        <path d="M5 12h14m0 0l-5-5m5 5l-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-backup" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4H6.5A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="icon-flag" viewBox="0 0 24 24">
+        <path d="M6 21V4m0 0h11l-2 4.5 2 4.5H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-without-connection" viewBox="0 0 24 24">
+        <path d="M3 3l18 18M8.5 8.7A9 9 0 0 0 3 11.5M16 11a9 9 0 0 1 5 2.5M9 15.3a5 5 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <circle cx="12" cy="19" r="1.3" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-new" viewBox="0 0 24 24">
+        <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+      </symbol>
+    </svg>
+
+    <div id="layer-emoji" class="layer-sticker" hidden></div>
+
+    <div class="app">
+      <header class="header">
+        <svg class="header-logo" viewBox="0 0 1024 1024" aria-hidden="true">
+          <defs>
+            <linearGradient id="logo-fondo" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#3ddc84" />
+              <stop offset="1" stop-color="#0f9d58" />
+            </linearGradient>
+          </defs>
+          <rect width="1024" height="1024" rx="224" fill="url(#logo-fondo)" />
+          <path d="M232 220 H700 L800 320 V640 Q800 700 740 700 H470 L330 820 L360 700 H292 Q232 700 232 640 V280 Q232 220 292 220 Z" fill="#ffffff" />
+          <path d="M700 220 V280 Q700 320 740 320 H800 Z" fill="#c8f5da" />
+          <path d="M700 220 L800 320 H740 Q700 320 700 280 Z" fill="#0b7a43" opacity="0.18" />
+          <circle cx="420" cy="420" r="38" fill="#0f9d58" />
+          <circle cx="612" cy="420" r="38" fill="#0f9d58" />
+          <path d="M390 520 Q516 640 642 520" fill="none" stroke="#0f9d58" stroke-width="44" stroke-linecap="round" />
+        </svg>
+        <h1>Conversor de stickers</h1>
+      </header>
+
+      <nav class="bar-destinations" aria-label="Destinos">
+        <button type="button" id="destination-start" class="bar-destination" data-destination="start">
+          <svg class="icon" aria-hidden="true"><use href="#icon-start" /></svg>
+          <span class="bar-destination-text" id="destination-start-text">Inicio</span>
+        </button>
+        <button type="button" id="destination-community" class="bar-destination" data-destination="community">
+          <svg class="icon" aria-hidden="true"><use href="#icon-community" /></svg>
+          <span class="bar-destination-text" id="destination-community-text">Comunidad</span>
+        </button>
+        <button type="button" id="destination-create" class="bar-destination" data-destination="create">
+          <svg class="icon" aria-hidden="true"><use href="#icon-create" /></svg>
+          <span class="bar-destination-text" id="destination-create-text">Crear</span>
+        </button>
+        <button type="button" id="destination-favorites" class="bar-destination" data-destination="favorites">
+          <svg class="icon" aria-hidden="true"><use href="#icon-favorite" /></svg>
+          <span class="bar-destination-text" id="destination-favorites-text">Favoritos</span>
+        </button>
+        <button type="button" id="destination-mis-packs" class="bar-destination" data-destination="mis-packs">
+          <svg class="icon" aria-hidden="true"><use href="#icon-packs" /></svg>
+          <span class="bar-destination-text" id="destination-mis-packs-text">Mis paquetes</span>
+        </button>
+      </nav>
+
+      <div class="body">
+
+      <div id="notice-global" class="panel-notice notice-global" role="status" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#icon-info" /></svg>
+        <p id="notice-global-text"></p>
+        <button type="button" id="notice-global-folder" class="button-text" hidden>Abrir carpeta</button>
+        <button type="button" id="notice-global-close" class="button-icon" aria-label="Cerrar el aviso">
+          <svg class="icon" aria-hidden="true"><use href="#icon-close" /></svg>
+        </button>
+      </div>
+
+      <main class="content">
+        <section id="panel-start" class="panel" aria-label="Inicio" tabindex="-1"></section>
+        <section id="panel-community" class="panel" aria-label="Comunidad" tabindex="-1" hidden></section>
+
+        <section id="panel-create" class="panel" aria-labelledby="title-create" tabindex="-1" hidden>
+          <h2 id="title-create">Crear</h2>
+          <div class="tabs">
+            <div class="tabs-list" role="tablist" aria-label="Qué crear">
+              <button type="button" role="tab" id="tab-stickers" class="tab" aria-controls="panel-stickers" aria-selected="true" data-section="stickers">
+                <svg class="icon" aria-hidden="true"><use href="#icon-sticker" /></svg>
+                <span class="tab-text"><span class="tab-name">Sticker</span><span class="tab-detail">WhatsApp</span></span>
+              </button>
+              <button type="button" role="tab" id="tab-gifs" class="tab" aria-controls="panel-gifs" aria-selected="false" tabindex="-1" data-section="gifs">
+                <svg class="icon" aria-hidden="true"><use href="#icon-gif" /></svg>
+                <span class="tab-text"><span class="tab-name">GIF</span><span class="tab-detail">Discord</span></span>
+              </button>
+              <button type="button" role="tab" id="tab-download" class="tab" aria-controls="panel-download" aria-selected="false" tabindex="-1" data-section="download">
+                <svg class="icon" aria-hidden="true"><use href="#icon-download" /></svg>
+                <span class="tab-text"><span class="tab-name" id="tab-download-name">Descargar</span><span class="tab-detail" id="tab-download-detail">Enlaces y pegar</span></span>
+              </button>
+              <button type="button" role="tab" id="tab-search-gif" class="tab" aria-controls="panel-search-gif" aria-selected="false" tabindex="-1" data-section="search-gif">
+                <svg class="icon" aria-hidden="true"><use href="#icon-search" /></svg>
+                <span class="tab-text"><span class="tab-name">Buscar GIF</span><span class="tab-detail">KLIPY y GIPHY</span></span>
+              </button>
+            </div>
+          </div>
+          <div id="panel-stickers" role="tabpanel" aria-labelledby="tab-stickers" tabindex="-1">
+          <section class="block create-sticker" aria-labelledby="title-create-sticker">
+                <h2 id="title-create-sticker">Crear sticker</h2>
+                <p id="create-sticker-destination" class="secondary"></p>
+                <div class="buttons-gallery">
+                  <button type="button" id="from-image" class="button-gallery">
+                    <svg class="icon icon-large" aria-hidden="true"><use href="#icon-image" /></svg>
+                    <span class="button-gallery-text">
+                      <span class="button-gallery-title">Imagen</span>
+                      <span class="secondary small">Sticker estático</span>
+                    </span>
+                  </button>
+                  <button type="button" id="from-video" class="button-gallery">
+                    <svg class="icon icon-large" aria-hidden="true"><use href="#icon-video" /></svg>
+                    <span class="button-gallery-text">
+                      <span class="button-gallery-title">Video</span>
+                      <span class="secondary small">Sticker animado</span>
+                    </span>
+                  </button>
+                </div>
+                <p id="create-help" class="secondary small">También puedes pegar una imagen o un video con Ctrl+V.</p>
+              </section>
+          </div>
+        <section id="panel-gifs" class="panel" role="tabpanel" aria-labelledby="tab-gifs" tabindex="-1" hidden>
+          <div class="stack">
+            <h2>GIFs para Discord</h2>
+            <p class="secondary">
+              Elige un video y, en el editor, el destino: GIF, emoji animado o sticker de Discord.
+            </p>
+            <button type="button" id="gif-video" class="button-gallery button-gallery-width">
+              <svg class="icon icon-large" aria-hidden="true"><use href="#icon-video" /></svg>
+              <span class="button-gallery-text">
+                <span class="button-gallery-title" id="gif-video-title">Video</span>
+                <span class="secondary small">De tu carpeta de vídeos</span>
+              </span>
+            </button>
+            <div id="gifs-error" class="panel-error" role="alert" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#icon-notice" /></svg>
+              <p id="gifs-error-text"></p>
+            </div>
+            <h3 id="title-gifs" class="subtitle">Creados en esta sesión</h3>
+            <p id="gifs-empty" class="state-empty">
+              Todavía no has creado ningún GIF. Los que crees se quedan aquí hasta que cierres la app.
+            </p>
+            <ul id="list-gifs" class="list-gifs" aria-labelledby="title-gifs"></ul>
+          </div>
+        </section>
+
+        <section id="panel-search-gif" class="panel" role="tabpanel" aria-labelledby="tab-search-gif" tabindex="-1" hidden>
+          <div class="stack">
+            <h2>Buscar GIF</h2>
+            <p class="secondary">
+              Busca en KLIPY o GIPHY, elige uno y ábrelo en el editor. El sticker se guarda en tu biblioteca; no se puede proponer a la comunidad.
+            </p>
+            <div>
+              <button type="button" id="bgif-settings" class="button-secondary button-small" aria-expanded="false" aria-controls="bgif-form-settings">
+                <svg class="icon" aria-hidden="true"><use href="#icon-edit" /></svg>
+                Proveedor y clave
+              </button>
+            </div>
+            <form id="bgif-form-settings" class="bgif-settings" hidden>
+              <div class="field">
+                <label for="bgif-provider">Proveedor</label>
+                <select id="bgif-provider">
+                  <option value="klipy">KLIPY</option>
+                  <option value="giphy">GIPHY</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="bgif-key">Clave</label>
+                <input id="bgif-key" type="password" autocomplete="off" spellcheck="false" maxlength="200" aria-describedby="bgif-key-state" />
+              </div>
+              <p id="bgif-key-state" class="secondary small" aria-live="polite"></p>
+              <a id="bgif-key-link" class="button-text link-external" href="https://partner.klipy.com" target="_blank" rel="noopener noreferrer">Conseguir una clave</a>
+              <div class="row-buttons">
+                <button type="submit" id="bgif-save" class="button-main button-small">Guardar clave</button>
+                <button type="button" id="bgif-delete" class="button-secondary button-small">Borrar clave</button>
+              </div>
+              <p id="bgif-settings-error" class="message-error" role="alert" hidden></p>
+            </form>
+            <form id="bgif-finder" class="bgif-finder" role="search" hidden>
+              <label for="bgif-text" class="only-readers">Buscar GIF</label>
+              <input id="bgif-text" type="search" autocomplete="off" spellcheck="false" maxlength="100" placeholder="Busca un GIF…" />
+              <button type="submit" class="button-main">Buscar</button>
+            </form>
+            <h3 id="bgif-title" class="subtitle">Tendencias</h3>
+            <p id="bgif-use-error" class="message-error" role="alert" hidden></p>
+            <div id="bgif-state" aria-live="polite"></div>
+            <ul id="bgif-grid" class="grid-gifs" aria-labelledby="bgif-title"></ul>
+            <div id="bgif-plus" class="bgif-plus"></div>
+            <p id="bgif-attribution" class="attribution-gif" hidden></p>
+          </div>
+        </section>
+
+        <section id="panel-download" class="panel" role="tabpanel" aria-labelledby="tab-download" tabindex="-1" hidden>
+          <div class="stack">
+            <div class="block paste">
+              <button type="button" id="paste" class="button-secondary button-paste">
+                <svg class="icon" aria-hidden="true"><use href="#icon-paste" /></svg>
+                <span id="paste-text">Pegar</span>
+              </button>
+              <p id="paste-help" class="secondary small">Una imagen o un video copiado. También con Ctrl+V en cualquier pestaña.</p>
+              <p id="paste-notice" class="message-notice" role="status" hidden></p>
+            </div>
+
+            <form id="form-links" class="block links" novalidate>
+              <label for="text-links">Pega uno o varios enlaces</label>
+              <div class="links-row">
+                <textarea
+                  id="text-links"
+                  rows="2"
+                  spellcheck="false"
+                  autocomplete="off"
+                  placeholder="https://…"
+                  aria-describedby="help-links error-links"
+                ></textarea>
+                <button type="submit" id="add" class="button-secondary">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-link" /></svg>
+                  Añadir
+                </button>
+              </div>
+              <p id="help-links" class="secondary small">
+                Uno por línea; Ctrl+Intro para añadir. Se descargan con yt-dlp: asegúrate de tener derecho a descargar cada video.
+              </p>
+              <p id="error-links" class="message-error" role="alert" hidden></p>
+            </form>
+
+            <div class="queue">
+              <div class="queue-header">
+                <h2 id="title-queue">Lista</h2>
+                <button type="button" id="cancel-downloads" class="button-text" hidden>Cancelar descargas</button>
+                <button type="button" id="resume-downloads" class="button-text" hidden>Descargar pendientes</button>
+              </div>
+              <button type="button" id="open-videos-folder" class="button-text" hidden>Abrir carpeta de vídeos</button>
+              <p id="queue-empty" class="state-empty"></p>
+              <ul id="list-queue" class="list-queue" aria-labelledby="title-queue"></ul>
+              <p id="error-queue" class="message-error" role="alert" hidden></p>
+            </div>
+          </div>
+        </section>
+        </section>
+
+        <section id="panel-favorites" class="panel" aria-label="Favoritos" tabindex="-1" hidden></section>
+        <section id="panel-detail" class="panel" aria-label="Paquete" tabindex="-1" hidden></section>
+        <section id="panel-category" class="panel" aria-label="Categoría" tabindex="-1" hidden></section>
+        <section id="panel-search" class="panel" aria-label="Búsqueda" tabindex="-1" hidden></section>
+
+        <section id="panel-mis-packs" class="panel" aria-label="Mis paquetes" tabindex="-1" hidden>
+          <div id="stickers-list" class="stack">
+            <div class="title-row">
+              <h2>Mis paquetes</h2>
+              <div class="actions-row">
+                <button type="button" id="import" class="button-secondary button-small">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-import" /></svg>
+                  Importar
+                </button>
+                <button type="button" id="new-pack" class="button-secondary button-small">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-plus" /></svg>
+                  Nuevo paquete
+                </button>
+              </div>
+            </div>
+
+            <div id="categories" class="chips" role="group" aria-label="Ver paquetes de la categoría"></div>
+
+            <div id="category-actions" class="category-actions" hidden>
+              <span id="category-name" class="secondary small"></span>
+              <button type="button" id="rename-category" class="button-text">Renombrar</button>
+              <button type="button" id="delete-category" class="button-text">Borrar categoría</button>
+            </div>
+            <div id="confirm-category" class="panel-confirm" role="group" aria-labelledby="confirm-category-text" hidden>
+              <p id="confirm-category-text"></p>
+              <div class="actions-row">
+                <button type="button" id="confirm-category-si" class="button-danger">Borrar</button>
+                <button type="button" id="confirm-category-no" class="button-secondary">Cancelar</button>
+              </div>
+            </div>
+
+            <form id="form-stickers" class="form-line" novalidate hidden>
+              <label id="form-stickers-label" for="form-stickers-text"></label>
+              <div class="form-line-row">
+                <input id="form-stickers-text" type="text" autocomplete="off" spellcheck="false" aria-describedby="form-stickers-error" />
+                <button type="submit" id="form-stickers-send" class="button-secondary"></button>
+                <button type="button" id="form-stickers-cancel" class="button-text">Cancelar</button>
+              </div>
+              <p id="form-stickers-error" class="message-error" role="alert" hidden></p>
+            </form>
+
+            <p id="packs-state" class="state-empty"></p>
+            <button type="button" id="library-retry" class="button-secondary button-centered" hidden>Reintentar</button>
+            <ul id="grid-packs" class="grid-packs" aria-label="Paquetes"></ul>
+
+            <section class="block" aria-labelledby="title-backup">
+              <h3 id="title-backup" class="subtitle">Copia de seguridad</h3>
+              <p class="secondary small">
+                Guarda todos tus paquetes en un .zip, o recupéralos de una copia anterior. Al restaurar, tu biblioteca actual se aparta, no se borra.
+              </p>
+              <div class="actions-row">
+                <button type="button" id="backup-export" class="button-secondary">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-backup" /></svg>
+                  Exportar copia de seguridad
+                </button>
+                <button type="button" id="backup-restore" class="button-secondary">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-import" /></svg>
+                  Restaurar copia
+                </button>
+              </div>
+              <div id="backup-confirm" class="panel-confirm" role="group" aria-labelledby="backup-confirm-text" hidden>
+                <p id="backup-confirm-text">
+                  Se reemplazará tu biblioteca por la de la copia. La actual se guarda aparte por si te arrepientes.
+                </p>
+                <div class="actions-row">
+                  <button type="button" id="backup-confirm-si" class="button-danger">Elegir la copia</button>
+                  <button type="button" id="backup-confirm-no" class="button-secondary">Cancelar</button>
+                </div>
+              </div>
+              <p id="backup-state" class="secondary small" role="status" hidden></p>
+              <p id="backup-error" class="message-error" role="alert" hidden></p>
+            </section>
+          </div>
+
+          <article id="pack" class="stack" aria-labelledby="pack-title" hidden>
+            <button type="button" id="pack-back" class="button-back">
+              <svg class="icon" aria-hidden="true"><use href="#icon-back" /></svg>
+              Paquetes
+            </button>
+            <div class="pack-header">
+              <div id="pack-icon" class="thumbnail thumbnail-large"></div>
+              <div class="pack-titles">
+                <h2 id="pack-title"></h2>
+                <p id="pack-data" class="secondary"></p>
+              </div>
+            </div>
+
+            <form id="form-pack" class="form-pack" novalidate>
+              <div class="field">
+                <label for="pack-name">Nombre</label>
+                <input id="pack-name" type="text" autocomplete="off" maxlength="200" />
+              </div>
+              <div class="field">
+                <label for="pack-author">Autor <span class="secondary">(opcional)</span></label>
+                <input id="pack-author" type="text" autocomplete="off" maxlength="200" />
+              </div>
+              <div class="field">
+                <label for="pack-category">Categoría</label>
+                <select id="pack-category"></select>
+              </div>
+              <div class="field field-button">
+                <button type="submit" id="pack-save" class="button-secondary">Guardar cambios</button>
+              </div>
+              <p id="form-pack-error" class="message-error" role="alert" hidden></p>
+            </form>
+
+            <h3 id="title-stickers-pack" class="subtitle">Stickers</h3>
+            <ul id="grid-stickers" class="grid-stickers" aria-labelledby="title-stickers-pack"></ul>
+            <div id="sticker-actions" class="sticker-actions" hidden>
+              <span id="sticker-chosen" class="secondary small"></span>
+              <button type="button" id="use-icon" class="button-secondary button-small">Usar como icono</button>
+              <button type="button" id="remove-sticker" class="button-secondary button-small">
+                <svg class="icon" aria-hidden="true"><use href="#icon-delete" /></svg>
+                Quitar del paquete
+              </button>
+            </div>
+
+            <div class="pack-footer">
+              <div class="export">
+                <button type="button" id="export" class="button-secondary" aria-describedby="export-reason">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-export" /></svg>
+                  Exportar .wastickers
+                </button>
+                <p id="export-reason" class="secondary small"></p>
+              </div>
+              <div id="whatsapp-block" class="export" hidden>
+                <button type="button" id="whatsapp" class="button-main" aria-describedby="whatsapp-reason">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-sticker" /></svg>
+                  Añadir a WhatsApp
+                </button>
+                <p id="whatsapp-reason" class="secondary small"></p>
+              </div>
+              <button type="button" id="delete-pack" class="button-text button-text-danger">Borrar paquete</button>
+            </div>
+            <div id="confirm-pack" class="panel-confirm" role="group" aria-labelledby="confirm-pack-text" hidden>
+              <p id="confirm-pack-text"></p>
+              <div class="actions-row">
+                <button type="button" id="confirm-pack-si" class="button-danger">Borrar paquete</button>
+                <button type="button" id="confirm-pack-no" class="button-secondary">Cancelar</button>
+              </div>
+            </div>
+          </article>
+
+          <div id="stickers-notices" class="panel-notice" role="status" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#icon-info" /></svg>
+            <ul id="stickers-notices-list" class="list-notices"></ul>
+            <button type="button" id="stickers-notices-close" class="button-icon" aria-label="Cerrar los avisos">
+              <svg class="icon" aria-hidden="true"><use href="#icon-close" /></svg>
+            </button>
+          </div>
+          <div id="stickers-error" class="panel-error" role="alert" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#icon-notice" /></svg>
+            <p id="stickers-error-text"></p>
+          </div>
+
+        </section>
+
+        <section id="editor" class="panel editor" aria-labelledby="editor-title" tabindex="-1" hidden>
+          <div class="editor-header">
+            <button type="button" id="editor-back" class="button-back" aria-keyshortcuts="Escape">
+              <svg class="icon" aria-hidden="true"><use href="#icon-back" /></svg>
+              Volver
+            </button>
+            <div class="editor-titles">
+              <h2 id="editor-title"></h2>
+              <p id="editor-file" class="secondary small"></p>
+            </div>
+          </div>
+
+          <fieldset class="segmented mode-switch" id="editor-mode">
+            <legend class="only-reader">Modo del editor</legend>
+            <div class="segments">
+              <label class="segment"><input type="radio" name="editor-mode" value="easy" /><span>Fácil</span></label>
+              <label class="segment"><input type="radio" name="editor-mode" value="advanced" /><span>Avanzado</span></label>
+            </div>
+          </fieldset>
+
+          <div id="editor-destinations" class="destinations" role="radiogroup" aria-label="Destino de Discord" hidden></div>
+
+          <div class="preview" id="preview">
+            <div class="preview-content" id="preview-content"><div class="preview-frame" id="preview-frame">
+              <video id="video" muted playsinline preload="auto" aria-label="Vista previa del tramo"></video>
+              <img id="editor-image" alt="" />
+              <div class="framing-square adv-only" id="framing-square" role="group" tabindex="0" aria-label="Zona que se queda en el sticker. Muévela con el dedo o con las flechas." hidden></div>
+            </div></div>
+            <p id="preview-message" class="preview-message"></p>
+          </div>
+
+          <div id="controls-video" class="stack">
+            <div class="crop" id="crop">
+              <div class="control-header">
+                <span class="control-title" id="title-clip-range">Tramo</span>
+                <span class="crop-text" id="crop-text">—</span>
+              </div>
+              <div class="crop-track" id="crop-track">
+                <div class="crop-thumbs" id="crop-thumbs" aria-hidden="true"></div>
+                <div class="crop-clip-range" id="crop-clip-range"></div>
+                <div class="crop-shade" id="crop-shade" aria-hidden="true"></div>
+                <div class="crop-handle" id="handle-start" role="slider" tabindex="0" aria-label="Inicio del tramo"></div>
+                <div class="crop-handle" id="handle-end" role="slider" tabindex="0" aria-label="Fin del tramo"></div>
+              </div>
+              <div class="crop-nudges adv-only" id="crop-nudges">
+                <div class="nudge" role="group" aria-label="Inicio del tramo">
+                  <button type="button" class="button-secondary" data-nudge="start" data-direction="-1" aria-label="Inicio 0,1 s antes">−0,1</button>
+                  <span class="nudge-label">Inicio</span>
+                  <button type="button" class="button-secondary" data-nudge="start" data-direction="1" aria-label="Inicio 0,1 s después">+0,1</button>
+                </div>
+                <div class="nudge" role="group" aria-label="Fin del tramo">
+                  <button type="button" class="button-secondary" data-nudge="end" data-direction="-1" aria-label="Fin 0,1 s antes">−0,1</button>
+                  <span class="nudge-label">Fin</span>
+                  <button type="button" class="button-secondary" data-nudge="end" data-direction="1" aria-label="Fin 0,1 s después">+0,1</button>
+                </div>
+              </div>
+              <p id="crop-output" class="secondary small adv-only"></p>
+              <button type="button" id="fit-time" class="button-secondary button-small adv-only">Ajustar al tiempo que cabe</button>
+            </div>
+
+            <button type="button" id="create-with-sound" class="button-secondary" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#icon-create" /></svg>
+              Sticker con sonido (experimental)
+            </button>
+
+            <div class="control adv-only">
+              <div class="control-header">
+                <label class="control-title" for="speed">Velocidad</label>
+                <output id="speed-value" for="speed" class="control-value">1x</output>
+              </div>
+              <input type="range" id="speed" min="0.5" max="3" step="0.05" value="1" aria-describedby="speed-detail" />
+              <div class="marks" aria-hidden="true">
+                <span data-position="0">0,5x</span>
+                <span data-position="20">1x</span>
+                <span data-position="40">1,5x</span>
+                <span data-position="60">2x</span>
+                <span data-position="100">3x</span>
+              </div>
+              <div class="control-footer">
+                <p id="speed-detail" class="secondary small"></p>
+                <button type="button" id="fit-max" class="button-secondary button-small">Ajustar al máximo</button>
+              </div>
+              <p id="fitting-notice" class="message-notice" role="status" hidden></p>
+            </div>
+
+            <fieldset class="control segmented adv-only" id="fps">
+              <legend class="control-title">Fluidez (fps)</legend>
+              <div class="segments">
+                <label class="segment"><input type="radio" name="fps" value="auto" /><span>Auto</span></label>
+                <label class="segment"><input type="radio" name="fps" value="15" /><span>15</span></label>
+                <label class="segment"><input type="radio" name="fps" value="20" /><span>20</span></label>
+                <label class="segment"><input type="radio" name="fps" value="24" /><span>24</span></label>
+                <label class="segment"><input type="radio" name="fps" value="30" /><span>30</span></label>
+              </div>
+              <div class="custom-number">
+                <label for="fps-custom">Otro:</label>
+                <input type="text" id="fps-custom" inputmode="numeric" autocomplete="off" aria-describedby="fps-error" />
+                <span>fps</span>
+              </div>
+              <p id="fps-error" class="message-error small" role="alert" hidden></p>
+            </fieldset>
+
+            <fieldset class="control adv-only" id="side-box">
+              <legend class="control-title">Tamaño del GIF</legend>
+              <div class="chips" id="side-chips"></div>
+              <div class="custom-number" id="side-custom-box">
+                <label for="side-custom">Otro:</label>
+                <input type="text" id="side-custom" inputmode="numeric" autocomplete="off" aria-describedby="side-error" />
+                <span>px</span>
+              </div>
+              <p id="side-error" class="message-error small" role="alert" hidden></p>
+              <p id="side-note" class="secondary small" hidden>WhatsApp exige 512 × 512; usa «Tamaño del dibujo» para hacerlo más pequeño.</p>
+            </fieldset>
+
+            <fieldset class="control segmented adv-only" id="priority">
+              <legend class="control-title">Calidad o duración</legend>
+              <div class="segments segments-two-rows">
+                <label class="segment"><input type="radio" name="priority" value="sharpness" /><span>Más calidad</span></label>
+                <label class="segment"><input type="radio" name="priority" value="balance" /><span>Equilibrado</span></label>
+                <label class="segment"><input type="radio" name="priority" value="smoothness" /><span>Más duración</span></label>
+                <label class="segment"><input type="radio" name="priority" value="fit_anyway" /><span>Que quepa</span></label>
+                <label class="segment"><input type="radio" name="priority" value="fluid" /><span>Más fluido</span></label>
+              </div>
+              <p id="priority-explanation" class="secondary small"></p>
+            </fieldset>
+          </div>
+
+          <fieldset class="control segmented adv-only" id="controls-framing">
+            <legend class="control-title">Encuadre</legend>
+            <div class="segments">
+              <label class="segment"><input type="radio" name="framing" value="crop" /><span>Recortar</span></label>
+              <label class="segment"><input type="radio" name="framing" value="fit" /><span>Encajar</span></label>
+            </div>
+            <p id="framing-explanation" class="secondary small"></p>
+            <div id="framing-zoom-box" class="framing-zoom">
+              <div class="control-header">
+                <label class="control-title" for="framing-zoom">Zoom</label>
+                <output id="framing-zoom-value" for="framing-zoom" class="control-value">1x</output>
+              </div>
+              <input type="range" id="framing-zoom" min="1" max="4" step="0.05" value="1" />
+              <button type="button" id="framing-reset" class="button-secondary button-small">Centrar y quitar el zoom</button>
+            </div>
+            <div id="framing-fit-box" class="stack" hidden>
+              <div class="sub-control">
+                <span class="control-title" id="title-background">Fondo</span>
+                <div class="segments segments-compact" role="group" aria-labelledby="title-background">
+              <label class="segment"><input type="radio" name="background" value="transparent" /><span>Transparente</span></label>
+              <label class="segment"><input type="radio" name="background" value="color" /><span>Color</span></label>
+              <label class="segment"><input type="radio" name="background" value="blur" /><span>Difuminado</span></label>
+                </div>
+                <div id="colour-box" class="colour-box" hidden>
+                  <div class="swatches" id="swatches" role="group" aria-label="Colores de fondo"></div>
+                  <label class="colour-custom">Otro color <input type="color" id="colour-custom" value="#ffffff" /></label>
+                </div>
+              </div>
+              <div class="sub-control">
+                <span class="control-title" id="title-align">Alineación</span>
+                <div class="segments" role="group" aria-labelledby="title-align">
+              <label class="segment"><input type="radio" name="align" value="top" /><span>Arriba</span></label>
+              <label class="segment"><input type="radio" name="align" value="center" /><span>Centro</span></label>
+              <label class="segment"><input type="radio" name="align" value="bottom" /><span>Abajo</span></label>
+                </div>
+              </div>
+            </div>
+            <div class="sub-control">
+              <span class="control-title" id="title-shape">Forma</span>
+              <div class="segments segments-compact" role="group" aria-labelledby="title-shape">
+              <label class="segment"><input type="radio" name="shape" value="square" /><span>Cuadrado</span></label>
+              <label class="segment"><input type="radio" name="shape" value="rounded" /><span>Redondeado</span></label>
+              <label class="segment"><input type="radio" name="shape" value="circle" /><span>Círculo</span></label>
+              </div>
+            </div>
+            <div class="sub-control">
+              <span class="control-title" id="title-scale">Tamaño del dibujo</span>
+              <div class="chips" id="scale-chips" role="group" aria-labelledby="title-scale"></div>
+              <p class="secondary small">Ocupa menos y pesa menos</p>
+            </div>
+          </fieldset>
+
+          <div id="estimate" class="estimate adv-only" aria-live="polite">
+            <p id="estimate-size" class="estimate-size"></p>
+            <p id="estimate-seconds" class="secondary small"></p>
+            <p id="estimate-detail" class="secondary small" hidden></p>
+            <button type="button" id="make-fit" class="button-main make-fit" hidden>Hacer que quepa</button>
+          </div>
+
+          <div class="create-row">
+            <button type="button" id="create" class="button-create">
+              <span class="button-create-bar" id="create-bar"></span>
+              <span class="button-create-content">
+                <svg class="icon" aria-hidden="true"><use href="#icon-create" /></svg>
+                <span id="create-text">Crear</span>
+              </span>
+            </button>
+            <button type="button" id="cancel-creation" class="button-secondary" hidden>Cancelar</button>
+          </div>
+          <p id="clip-video-state" class="secondary small" role="status" aria-live="polite" hidden></p>
+          <button type="button" id="clip-video-folder" class="button-text" hidden>Abrir carpeta</button>
+          <div id="sound-box" class="sound-box" hidden>
+            <button type="button" id="save-sound" class="button-secondary">
+              <svg class="icon" aria-hidden="true"><use href="#icon-save" /></svg>
+              Guardar sonido para sticker
+            </button>
+            <p id="sound-state" class="secondary small" role="status" aria-live="polite"></p>
+            <button type="button" id="sound-folder" class="button-text" hidden>Abrir carpeta</button>
+          </div>
+          <p id="easy-note" class="message-notice" role="status" hidden></p>
+          <p id="announcement" class="only-reader" aria-live="polite"></p>
+
+          <div id="error-create" class="panel-error" role="alert" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#icon-notice" /></svg>
+            <p id="error-create-text"></p>
+          </div>
+
+          <article id="result" class="result" aria-labelledby="result-title" hidden>
+            <div class="result-image" id="result-shell">
+              <img id="result-image" alt="" />
+            </div>
+            <div class="result-data">
+              <h3 id="result-title" class="result-size"></h3>
+              <p id="result-meets" class="result-meets"></p>
+              <p id="result-detail" class="secondary small"></p>
+              <p id="result-notice" class="result-notice" hidden></p>
+              <div id="result-actions" class="result-actions">
+                <button type="button" id="add-open" class="button-main" hidden></button>
+                <div id="add-pick" class="add-pick" hidden>
+                  <label for="add-pack">Añadir a</label>
+                  <select id="add-pack"></select>
+                  <button type="button" id="add-button" class="button-main">Añadir</button>
+                </div>
+                <p id="add-without-packs" class="secondary small" hidden></p>
+                <p id="add-state" class="secondary small" aria-live="polite"></p>
+                <button type="button" id="send-whatsapp" class="button-main" hidden>
+                  <svg class="icon" aria-hidden="true"><use href="#icon-export" /></svg>
+                  Enviar a WhatsApp como sticker
+                </button>
+                <button type="button" id="share" class="button-secondary" title="WhatsApp lo recibe como foto. Para usarlo como sticker, añádelo a un paquete." aria-description="WhatsApp lo recibe como foto. Para usarlo como sticker, añádelo a un paquete." hidden>
+                  <svg class="icon" aria-hidden="true"><use href="#icon-export" /></svg>
+                  Compartir como imagen
+                </button>
+                <button type="button" id="save" class="button-secondary">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-save" /></svg>
+                  Guardar como archivo
+                </button>
+                <p id="saved" class="secondary small" aria-live="polite"></p>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+      </div>
+
+      <button type="button" id="fab-create" class="fab-create" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#icon-create" /></svg>
+        Crear
+      </button>
+
+      <footer id="credits" class="credits secondary small" hidden>
+        <p>Usa FFmpeg (LGPL 2.1+). Código fuente: ffmpeg.org.</p>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+# WebKitGTK con el renderizador DMABUF deja la ventana en negro con el driver
+# de NVIDIA en Wayland. Así lo hereda `cargo tauri dev`; el binario
+# empaquetado se protege solo en `app/src-tauri/src/entorno.rs` (D18).
+[env]
+WEBKIT_DISABLE_DMABUF_RENDERER = "1"
