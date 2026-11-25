@@ -10,6 +10,7 @@ import type { Queue } from "./queue.ts";
 import type { Saving } from "./saving.ts";
 import type { ClipVideoState } from "./clip-video.ts";
 import type { SoundState } from "./sound.ts";
+import type { InstalledExtension } from "./extensions.ts";
 import type {
   LibraryUi,
   CategoryUi,
@@ -153,6 +154,8 @@ export interface EditorView {
   readonly creation: Creation;
   readonly sound: SoundState;
   readonly clipVideo: ClipVideoState;
+  /** The installed extensions, as the settings left them when the editor opened. */
+  readonly extensions: readonly InstalledExtension[];
   readonly packs: {
     readonly open: DestinationPack | null;
     readonly compatible: readonly DestinationPack[];
@@ -180,6 +183,8 @@ export interface EditorActions {
   saveSound(): void;
   saveClipVideo(): void;
   openFolder(folder: SavedFolder): void;
+  openWhatsapp(): void;
+  sendToExtension(id: string): void;
   share(): void;
   sendToWhatsapp(): void;
   addPack(id: number): void;

@@ -2,6 +2,7 @@ import { addEntries, emptyQueue, startDownloads } from "./queue.ts";
 import { createKlipySection, type KlipySection } from "./klipy-section.ts";
 import { createCatalogSection, type CatalogSection } from "./catalog-section.ts";
 import { createBackupSection } from "./backup-section.ts";
+import { createExtensionsSection } from "./extensions-section.ts";
 import { createDetailSection, type DetailSection } from "./detail-section.ts";
 import { createFavoritesSection, type FavoritesSection } from "./favorites-section.ts";
 import { platform } from "./platform.ts";
@@ -196,6 +197,7 @@ export async function startDemo(initial: string | null): Promise<void> {
     creation: { kind: "inactive" },
     sound: { kind: "idle" },
     clipVideo: { kind: "idle" },
+    extensions: [],
     packs: { open: { id: 1, name: "Gatos que saltan" }, compatible: [] },
   };
 
@@ -482,6 +484,7 @@ export async function startDemo(initial: string | null): Promise<void> {
       repaint();
     },
     openFolder: register("abrir carpeta"),
+    openWhatsapp: register("abrir WhatsApp"),
     entry: () => undefined,
     remember: () => undefined,
     forget: () => undefined,
@@ -545,6 +548,8 @@ export async function startDemo(initial: string | null): Promise<void> {
     saveSound: register("guardar sonido"),
     saveClipVideo: register("guardar vídeo para sticker"),
     openFolder: register("abrir carpeta"),
+    openWhatsapp: register("abrir WhatsApp"),
+    sendToExtension: register("enviar a extensión"),
     share: register("compartir"),
     sendToWhatsapp: register("enviar a WhatsApp"),
     addPack: register("añadir al paquete"),
@@ -632,6 +637,7 @@ export async function startDemo(initial: string | null): Promise<void> {
   });
   searchGif = createGifSearchSection(context, { api: demoGifs.api, fileUrl: (path) => path });
   createBackupSection({ api: demo.api, setLibrary: demo.setLibrary });
+  createExtensionsSection();
   catalog.onChange(detail.onCatalogChange);
   catalog.onChange(favorites.onCatalogChange);
   demo.onChange(() => repaint());

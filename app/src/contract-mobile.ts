@@ -43,3 +43,12 @@ export function receiveShared(): Promise<EntryUi[]> {
 export function openSavedFolder(kind: SavedFolder): Promise<void> {
   return call("open_saved_folder", { kind });
 }
+
+/** Shares the last saved clip to the bot's WhatsApp chat; `caption` is the settings text it reads. */
+export function sendToBot(number: string, caption: string | null): Promise<void> {
+  return call("send_to_bot", { number, caption });
+}
+
+export function openWhatsapp(): Promise<void> {
+  return call("open_whatsapp");
+}

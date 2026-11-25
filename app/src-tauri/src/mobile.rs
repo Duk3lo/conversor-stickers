@@ -590,6 +590,89 @@ pub(crate) fn open_saved_folder(app: &AppHandle, kind: &'static str) -> Result<(
     }
 }
 
+/// Brings WhatsApp to the front so the user can pick the saved video in its stickers.
+pub(crate) fn open_whatsapp(app: &AppHandle) -> Result<(), UiError> {
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err(android_only())
+    }
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+
+        app.state::<AndroidBridge>()
+            .0
+            .run_mobile_plugin::<()>("open_whatsapp", ())
+            .map_err(|failure| UiError::new(UiErrorKind::Other, failure.to_string()))
+    }
+}
+
+#[cfg(edition = "github")]
+const BOT_NUMBER_DIGITS: std::ops::RangeInclusive<usize> = 8..=15;
+#[cfg(edition = "github")]
+const BOT_CAPTION_MAX_CHARS: usize = 80;
+
+#[cfg(edition = "github")]
+/// The bot's number: 8 to 15 digits. Checked here and again in Kotlin, which builds the chat id.
+pub(crate) fn bot_number(number: &str) -> Result<&str, UiError> {
+    if BOT_NUMBER_DIGITS.contains(&number.len()) && number.bytes().all(|byte| byte.is_ascii_digit())
+    {
+        Ok(number)
+    } else {
+        Err(UiError::new(
+            UiErrorKind::InvalidEntry,
+            "el número del bot no es válido: solo dígitos, de 8 a 15",
+        ))
+    }
+}
+
+#[cfg(edition = "github")]
+/// The settings caption (`inicio=2 fin=7 sonido=5`): short, with only the characters it needs.
+pub(crate) fn bot_caption(caption: &str) -> Result<&str, UiError> {
+    let allowed = |character: char| {
+        character.is_ascii_lowercase()
+            || character.is_ascii_digit()
+            || matches!(character, '=' | ' ' | '.')
+    };
+    if caption.chars().count() <= BOT_CAPTION_MAX_CHARS && caption.chars().all(allowed) {
+        Ok(caption)
+    } else {
+        Err(UiError::new(
+            UiErrorKind::InvalidEntry,
+            "el texto de ajustes del bot no es válido",
+        ))
+    }
+}
+
+#[cfg(edition = "github")]
+/// Shares the last saved clip to the bot's chat in WhatsApp.
+pub(crate) fn send_to_bot(
+    app: &AppHandle,
+    number: &str,
+    caption: Option<&str>,
+) -> Result<(), UiError> {
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, number, caption);
+        Err(android_only())
+    }
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+
+        #[derive(serde::Serialize)]
+        struct Arguments<'a> {
+            number: &'a str,
+            caption: Option<&'a str>,
+        }
+        app.state::<AndroidBridge>()
+            .0
+            .run_mobile_plugin::<()>("send_to_bot", Arguments { number, caption })
+            .map_err(|failure| UiError::new(UiErrorKind::Other, failure.to_string()))
+    }
+}
+
 pub(crate) fn android_only() -> UiError {
     UiError::new(UiErrorKind::Other, "solo está disponible en Android")
 }
@@ -748,6 +831,47 @@ mod tests {
     use std::io::Cursor;
 
     use super::*;
+
+    #[cfg(edition = "github")]
+    #[test]
+    fn bot_number_is_eight_to_fifteen_digits() {
+        assert!(bot_number("34612345678").is_ok());
+        assert!(bot_number("12345678").is_ok());
+        assert!(bot_number("123456789012345").is_ok());
+        for bad in [
+            "",
+            "1234567",
+            "1234567890123456",
+            "+34612345678",
+            "3461234567a",
+            "٣٤٦١٢٣٤٥٦٧٨",
+        ] {
+            assert_eq!(
+                bot_number(bad).unwrap_err().kind,
+                UiErrorKind::InvalidEntry,
+                "{bad}"
+            );
+        }
+    }
+
+    #[cfg(edition = "github")]
+    #[test]
+    fn bot_caption_accepts_only_the_settings_format() {
+        assert!(bot_caption("inicio=2 fin=7.5 sonido=5").is_ok());
+        assert!(bot_caption("").is_ok());
+        for bad in [
+            "inicio=2\nfin=7",
+            "Inicio=2",
+            "inicio=2;rm",
+            &"a".repeat(81),
+        ] {
+            assert_eq!(
+                bot_caption(bad).unwrap_err().kind,
+                UiErrorKind::InvalidEntry,
+                "{bad}"
+            );
+        }
+    }
 
     #[test]
     fn only_videos_and_sounds_folders_can_be_opened() {

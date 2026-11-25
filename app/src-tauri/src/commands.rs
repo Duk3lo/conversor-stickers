@@ -9,9 +9,11 @@ use tauri::{AppHandle, Manager, State, Window};
 use tauri_plugin_dialog::{DialogExt, FilePath, PickerMode};
 use tracing::warn;
 
+#[cfg(edition = "github")]
+use crate::contract::QueueEvent;
 use crate::contract::{
     CreateRequest, CreateResult, EntryUi, EstimateUi, MediaKind, MediaUi, PresetUi, ProgressUi,
-    QueueEvent, StaticRequest, UiError, UiErrorKind,
+    StaticRequest, UiError, UiErrorKind,
 };
 use crate::mobile;
 use crate::session::{self, PASTE_LIMIT_BYTES, Session};
@@ -168,6 +170,7 @@ pub(crate) async fn paste(
     Ok(entry)
 }
 
+#[cfg(edition = "github")]
 #[tauri::command]
 pub(crate) fn add_links(
     text: String,
@@ -176,6 +179,7 @@ pub(crate) fn add_links(
     session.add_links(&text)
 }
 
+#[cfg(edition = "github")]
 #[tauri::command]
 pub(crate) async fn download_queue(
     channel: Channel<QueueEvent>,
@@ -196,6 +200,7 @@ pub(crate) async fn download_queue(
     .await
 }
 
+#[cfg(edition = "github")]
 #[tauri::command]
 pub(crate) fn cancel_downloads(session: State<'_, Arc<Session>>) {
     session.cancel_downloads();

@@ -152,6 +152,7 @@
           <path d="M390 520 Q516 640 642 520" fill="none" stroke="#0f9d58" stroke-width="44" stroke-linecap="round" />
         </svg>
         <h1>Conversor de stickers</h1>
+        <span id="edition-badge" class="edition-badge" hidden></span>
       </header>
 
       <nav class="bar-destinations" aria-label="Destinos">
@@ -432,6 +433,21 @@
               </div>
               <p id="backup-state" class="secondary small" role="status" hidden></p>
               <p id="backup-error" class="message-error" role="alert" hidden></p>
+            </section>
+
+            <section id="section-extensions" class="block" aria-labelledby="title-extensions">
+              <h3 id="title-extensions" class="subtitle">Extensiones (opcional)</h3>
+              <p class="secondary small">
+                Una extensión es un archivo .json que describe a dónde enviar un clip; no contiene código. Instala solo las que
+                te fíes: pueden llevar a servicios no oficiales de WhatsApp y usarlos puede provocar el bloqueo de tu cuenta.
+                Cada persona es responsable de su cuenta y de lo que haga con ellas.
+              </p>
+              <div class="actions-row">
+                <button type="button" id="extension-install" class="button-secondary">Instalar extensión…</button>
+              </div>
+              <p id="extension-error" class="message-error" role="alert" hidden></p>
+              <p id="extension-empty" class="secondary small">No hay extensiones instaladas.</p>
+              <div id="extension-list"></div>
             </section>
           </div>
 
@@ -715,7 +731,12 @@
             <button type="button" id="cancel-creation" class="button-secondary" hidden>Cancelar</button>
           </div>
           <p id="clip-video-state" class="secondary small" role="status" aria-live="polite" hidden></p>
-          <button type="button" id="clip-video-folder" class="button-text" hidden>Abrir carpeta</button>
+          <div class="actions-row">
+            <button type="button" id="clip-video-folder" class="button-text" hidden>Abrir carpeta</button>
+            <button type="button" id="open-whatsapp" class="button-text" hidden>Abrir WhatsApp</button>
+          </div>
+          <div id="extension-sends" class="actions-row"></div>
+          <div id="extension-notices" role="status" aria-live="polite"></div>
           <div id="sound-box" class="sound-box" hidden>
             <button type="button" id="save-sound" class="button-secondary">
               <svg class="icon" aria-hidden="true"><use href="#icon-save" /></svg>

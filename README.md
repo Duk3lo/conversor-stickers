@@ -226,6 +226,22 @@ The key lives outside the repository, in `~/.config/conversor-stickers/release.j
 `conversor-stickers`). If you lose the keystore or its password, new versions cannot be installed over
 the old app: back both up.
 
+## Ediciones: `github` y `play`
+
+La variable `CONVERSOR_EDITION` elige la edición; por defecto es `github`.
+
+- `github`: todo, incluidas las extensiones y la descarga de enlaces con yt-dlp.
+- `play`: sin la sección Extensiones, sin descargar enlaces, sin Python/Chaquopy en el APK y sin esos
+  comandos ni sus permisos.
+
+```sh
+CONVERSOR_EDITION=play app/src-tauri/android-release.sh
+```
+
+La misma variable la leen `build.rs` (cfg `edition = "github"`, y qué comandos y permisos existen),
+Vite (flag de la interfaz) y Gradle (Chaquopy). Para comprobar `play` en Rust:
+`CONVERSOR_EDITION=play cargo clippy -p conversor-app --all-targets -- -D warnings`.
+
 ## GIF and sticker search (KLIPY and GIPHY)
 
 The **Crear** (Create) view has a GIF search tab for KLIPY or GIPHY. The chosen GIF goes into the

@@ -150,7 +150,7 @@ export function createDownloadSection(context: Context, busyEditor: () => boolea
       for (const element of elements) {
         if (!element.types.includes("text/plain")) continue;
         const links = linksOfText(await (await element.getType("text/plain")).text());
-        if (links.length > 0) {
+        if (links.length > 0 && controls(platform).links) {
           set({ pasted: { kind: "inactive" } });
           return carryLinks(links.join("\n"));
         }
@@ -191,6 +191,7 @@ export function createDownloadSection(context: Context, busyEditor: () => boolea
         void pasteBytes(pasteable.file, pasteable.mime);
         return;
       case "links":
+        if (!controls(platform).links) return;
         event.preventDefault();
         carryLinks(pasteable.text);
         return;

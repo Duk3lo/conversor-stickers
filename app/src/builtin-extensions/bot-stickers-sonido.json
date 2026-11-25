@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "id": "bot-stickers-sonido",
+  "nombre": "Bot de stickers con sonido",
+  "descripcion": "Recibe tus vídeos por WhatsApp y te devuelve un sticker animado con sonido.",
+  "aviso": "Cliente no oficial de WhatsApp (Baileys): puede provocar el bloqueo de la cuenta. Úsalo con un número secundario, solo para uso personal y bajo tu responsabilidad. Sin garantía.",
+  "url": "https://github.com/Duk3lo/bot-stickers-sonido",
+  "destino": { "tipo": "whatsapp-chat" },
+  "pie": { "sonido": true },
+  "limites": { "sonidoMaxSegundos": 10 }
+}

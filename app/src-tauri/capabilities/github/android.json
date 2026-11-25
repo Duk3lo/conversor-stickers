@@ -1,0 +1,10 @@
+{
+  "$schema": "../../gen/schemas/mobile-schema.json",
+  "identifier": "android-github",
+  "description": "github edition only: sending to an extension's chat. Not loaded in play.",
+  "windows": ["main"],
+  "platforms": ["android"],
+  "permissions": [
+    "allow-send-to-bot"
+  ]
+}

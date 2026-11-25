@@ -4,8 +4,11 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("rust")
-    id("com.chaquo.python")
 }
+
+// CONVERSOR_EDITION=play (default: github) leaves Python and yt-dlp out of the APK.
+val play = System.getenv("CONVERSOR_EDITION") == "play"
+if (!play) apply(plugin = "com.chaquo.python")
 
 val tauriProperties = Properties().apply {
     val propFile = file("tauri.properties")
@@ -80,6 +83,8 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    // `PythonEngine` is the only code that uses Chaquopy: play gets a stub in its place.
+    sourceSets.getByName("main").java.srcDir(if (play) "src/play/java" else "src/github/java")
     packaging {
         jniLibs {
             // ffmpeg and ffprobe are executables: they must be extracted to
@@ -91,9 +96,16 @@ android {
 
 // Python 3.12+ solo tiene ABIs de 64 bits. El plugin rust crea también
 // variantes de 32 bits (arm, x86) que esta app no construye: se les deja un
-// ABI de 64 bits para que Chaquopy no las rechace al configurar.
+// ABI de 64 bits para que Chaquopy no las rechace al configurar. La variante
+// universal lista los cuatro ABIs y se queda con los dos de 64 bits.
 android {
     productFlavors {
+        getByName("universal") {
+            ndk {
+                abiFilters.clear()
+                abiFilters += listOf("arm64-v8a", "x86_64")
+            }
+        }
         listOf("arm", "x86").forEach { nombre ->
             getByName(nombre) {
                 ndk {
@@ -107,11 +119,12 @@ android {
 
 // yt-dlp is pinned by version and hash (requirements-android.txt). Python 3.14 is the one of the
 // build machine, which Chaquopy requires for pip too; yt-dlp needs 3.11 or later.
-chaquopy {
-    defaultConfig {
-        version = "3.14"
-        pip {
-            install("-r", "requirements-android.txt")
+if (!play) {
+    // Without the plugin in `plugins {}` the typed `chaquopy {}` accessor does not exist.
+    extensions.getByName("chaquopy").withGroovyBuilder {
+        "defaultConfig" {
+            setProperty("version", "3.14")
+            "pip" { "install"("-r", "requirements-android.txt") }
         }
     }
 }
