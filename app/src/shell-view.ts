@@ -11,6 +11,7 @@ import {
   type Section,
   sectionWithKey,
 } from "./navigation.ts";
+import { play } from "./edition.ts";
 import { platform } from "./platform.ts";
 import { folderButtonVisible, type SavedFolder } from "./saved-folder.ts";
 import type { ShellActions, ShellView } from "./views.ts";
@@ -55,13 +56,14 @@ export function createShellView(actions: ShellActions): { render(view: ShellView
   let previous: Navigation | null = null;
 
   document.documentElement.dataset["platform"] = platform;
+  if (play) document.documentElement.dataset["edition"] = "play";
   for (const [root, button] of destinations) {
     const name = destinationLabel(platform, root);
     element<HTMLSpanElement>(`destination-${root}-text`).textContent = name;
     button.setAttribute("aria-label", destinationLabel("desktop", root));
     button.addEventListener("click", () => actions.goToRoot(root));
   }
-  const label = tabLabel("download");
+  const label = tabLabel("download", play);
   element<HTMLSpanElement>("tab-download-name").textContent = label.name;
   element<HTMLSpanElement>("tab-download-detail").textContent = label.detail;
   element<HTMLElement>("credits").hidden = !controls(platform).ffmpegCredits;

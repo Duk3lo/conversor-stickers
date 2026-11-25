@@ -3,7 +3,8 @@ import type { EntryUi } from "./contract.ts";
 import { create, element, icon, showMessage } from "./dom.ts";
 import { pendingThereIs, errorMessage } from "./messages.ts";
 import { savingPercentage, savingText } from "./saving.ts";
-import { PASTE_HELP, EMPTY_QUEUE, controls } from "./mobile.ts";
+import { PASTE_HELP, PASTE_HELP_PLAY, EMPTY_QUEUE, EMPTY_QUEUE_PLAY, controls } from "./mobile.ts";
+import { play } from "./edition.ts";
 import { platform } from "./platform.ts";
 import type { Saving } from "./saving.ts";
 import { canOpenFolder } from "./saved-folder.ts";
@@ -29,9 +30,9 @@ export function createDownloadView(actions: DownloadActions): {
   videosFolder.hidden = !canOpenFolder(platform);
   videosFolder.addEventListener("click", () => actions.openFolder("videos"));
 
-  element<HTMLParagraphElement>("paste-help").textContent = PASTE_HELP[platform];
-  emptyQueue.textContent = EMPTY_QUEUE[platform];
-  linksForm.hidden = !controls(platform).links;
+  element<HTMLParagraphElement>("paste-help").textContent = play ? PASTE_HELP_PLAY : PASTE_HELP[platform];
+  emptyQueue.textContent = play ? EMPTY_QUEUE_PLAY : EMPTY_QUEUE[platform];
+  linksForm.hidden = !controls(platform, play).links;
 
   pasteButton.addEventListener("click", () => actions.paste());
   linksForm.addEventListener("submit", (event) => {
@@ -126,7 +127,7 @@ export function createDownloadView(actions: DownloadActions): {
 
     rowActions.hidden = media === null || entry.state.kind !== "ready";
     makeGif.hidden = media?.kind !== "video";
-    saveVideo.hidden = media?.kind !== "video" || entry.origin !== "link" || savingThis;
+    saveVideo.hidden = !controls(platform, play).saveVideo || media?.kind !== "video" || entry.origin !== "link" || savingThis;
     saveVideo.disabled = saving !== null;
     cancelSaving.hidden = !savingThis;
     saveVideo.setAttribute("aria-label", `Guardar el vídeo de ${entry.name} con sonido`);

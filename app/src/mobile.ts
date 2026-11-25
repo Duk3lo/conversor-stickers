@@ -19,14 +19,14 @@ export function destinationLabel(platform: Platform, root: Root): string {
   }
 }
 
-export function tabLabel(section: Section): { name: string; detail: string } {
+export function tabLabel(section: Section, play = false): { name: string; detail: string } {
   switch (section) {
     case "stickers":
       return { name: "Sticker", detail: "WhatsApp" };
     case "gifs":
       return { name: "GIF", detail: "Discord" };
     case "download":
-      return { name: "Descargar", detail: "Enlaces y pegar" };
+      return { name: "Descargar", detail: play ? "Pegar" : "Enlaces y pegar" };
     case "search-gif":
       return { name: "Buscar GIF", detail: "KLIPY y GIPHY" };
   }
@@ -34,20 +34,27 @@ export function tabLabel(section: Section): { name: string; detail: string } {
 
 export interface PlatformControls {
   readonly links: boolean;
+  readonly saveVideo: boolean;
   readonly ctrlV: boolean;
   readonly addToWhatsapp: boolean;
   readonly ffmpegCredits: boolean;
 }
 
-export function controls(platform: Platform): PlatformControls {
+// The Google Play edition has no yt-dlp: no link box and nothing to save from a site.
+export function controls(platform: Platform, play = false): PlatformControls {
   const android = platform === "android";
-  return { links: true, ctrlV: !android, addToWhatsapp: android, ffmpegCredits: android };
+  return { links: !play, saveVideo: !play, ctrlV: !android, addToWhatsapp: android, ffmpegCredits: android };
 }
 
 export const PASTE_HELP = {
   desktop: "Una imagen o un video copiado. También con Ctrl+V en cualquier pestaña.",
   android: "Copia una imagen o un video en otra app y pulsa Pegar; o pega un enlace abajo.",
 } as const satisfies Record<Platform, string>;
+
+export const PASTE_HELP_PLAY =
+  "Copia una imagen o un video en otra app y pulsa Pegar. También puedes elegir archivos de la galería.";
+
+export const EMPTY_QUEUE_PLAY = "Aquí aparece lo que pegues y los archivos cuando eliges varios a la vez.";
 
 export const CREATE_HELP = {
   desktop: "También puedes pegar una imagen o un video con Ctrl+V.",

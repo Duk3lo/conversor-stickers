@@ -252,6 +252,21 @@ textarea::placeholder {
   padding: 4px 0 12px;
 }
 
+:root {
+  --logo-start: #3ddc84;
+  --logo-end: #0f9d58;
+  --logo-fold: #c8f5da;
+  --logo-shadow: #0b7a43;
+}
+
+/* The Google Play edition has its own violet logo, not the green one. */
+:root[data-edition="play"] {
+  --logo-start: #7c3aed;
+  --logo-end: #5b21b6;
+  --logo-fold: #ede9fe;
+  --logo-shadow: #2e1065;
+}
+
 .header-logo {
   width: 32px;
   height: 32px;

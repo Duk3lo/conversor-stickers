@@ -43,5 +43,9 @@ tauri-plugin-fs.workspace = true
 # crate to `Cargo.lock`.
 webp-animation.workspace = true
 
+[features]
+# Google Play edition: no yt-dlp downloads (see `edition.rs`). Built by `android-play.sh`.
+play = []
+
 [lints]
 workspace = true
