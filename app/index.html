@@ -139,17 +139,17 @@
         <svg class="header-logo" viewBox="0 0 1024 1024" aria-hidden="true">
           <defs>
             <linearGradient id="logo-fondo" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#3ddc84" />
-              <stop offset="1" stop-color="#0f9d58" />
+              <stop offset="0" style="stop-color: var(--logo-start)" />
+              <stop offset="1" style="stop-color: var(--logo-end)" />
             </linearGradient>
           </defs>
           <rect width="1024" height="1024" rx="224" fill="url(#logo-fondo)" />
           <path d="M232 220 H700 L800 320 V640 Q800 700 740 700 H470 L330 820 L360 700 H292 Q232 700 232 640 V280 Q232 220 292 220 Z" fill="#ffffff" />
-          <path d="M700 220 V280 Q700 320 740 320 H800 Z" fill="#c8f5da" />
-          <path d="M700 220 L800 320 H740 Q700 320 700 280 Z" fill="#0b7a43" opacity="0.18" />
-          <circle cx="420" cy="420" r="38" fill="#0f9d58" />
-          <circle cx="612" cy="420" r="38" fill="#0f9d58" />
-          <path d="M390 520 Q516 640 642 520" fill="none" stroke="#0f9d58" stroke-width="44" stroke-linecap="round" />
+          <path d="M700 220 V280 Q700 320 740 320 H800 Z" style="fill: var(--logo-fold)" />
+          <path d="M700 220 L800 320 H740 Q700 320 700 280 Z" style="fill: var(--logo-shadow)" opacity="0.18" />
+          <circle cx="420" cy="420" r="38" style="fill: var(--logo-end)" />
+          <circle cx="612" cy="420" r="38" style="fill: var(--logo-end)" />
+          <path d="M390 520 Q516 640 642 520" fill="none" style="stroke: var(--logo-end)" stroke-width="44" stroke-linecap="round" />
         </svg>
         <h1>Conversor de stickers</h1>
       </header>
