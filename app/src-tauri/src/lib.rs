@@ -13,6 +13,7 @@ mod contract;
 mod contract_community;
 mod contract_gifs;
 mod direct_link;
+mod edition;
 mod environment;
 mod external_sticker;
 mod gif_providers;

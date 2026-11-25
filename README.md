@@ -287,3 +287,9 @@ also shares that FFmpeg source tarball.
 
 Image encoders with other licenses (`imagequant`, GPL-3.0-or-later; `gifski`, AGPL-3.0-or-later) are
 not used, because they would change the license of the binary.
+
+## Google Play edition
+
+`app/src-tauri/android-play.sh` builds a signed AAB without yt-dlp downloads (only direct links to
+image or video files), with a violet icon and logo. It uses the Cargo feature `play`, `VITE_EDITION=play`
+and `CONVERSOR_PLAY=1`. Listing texts: `docs/google-play.md`; privacy policy: `docs/privacidad.md`.

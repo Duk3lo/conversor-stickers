@@ -285,6 +285,7 @@ pub(crate) async fn receive_shared(
     let session = Arc::clone(&session);
     in_background(move || {
         let shared = mobile::take_shared(&app)?;
+        crate::edition::require_direct_shared_links(crate::edition::PLAY, &shared.links)?;
         let mut entries = Vec::new();
         for SharedMedia { uri, mime } in &shared.media {
             crate::commands::prepare_executables(&app, &session)?;

@@ -32,9 +32,21 @@ test("the Create tabs", () => {
   assert.equal(tabLabel("search-gif").name, "Buscar GIF");
 });
 
+test("Play edition: no link box, no save from links, same rest; the tab says only Pegar", () => {
+  assert.deepEqual(controls("android", true), {
+    links: false,
+    saveVideo: false,
+    ctrlV: false,
+    addToWhatsapp: true,
+    ffmpegCredits: true,
+  });
+  assert.equal(tabLabel("download", true).detail, "Pegar");
+  assert.equal(tabLabel("download").detail, "Enlaces y pegar");
+});
+
 test("controls per platform: links on both, no Ctrl+V on Android, with WhatsApp and credits", () => {
-  assert.deepEqual(controls("desktop"), { links: true, ctrlV: true, addToWhatsapp: false, ffmpegCredits: false });
-  assert.deepEqual(controls("android"), { links: true, ctrlV: false, addToWhatsapp: true, ffmpegCredits: true });
+  assert.deepEqual(controls("desktop"), { links: true, saveVideo: true, ctrlV: true, addToWhatsapp: false, ffmpegCredits: false });
+  assert.deepEqual(controls("android"), { links: true, saveVideo: true, ctrlV: false, addToWhatsapp: true, ffmpegCredits: true });
 });
 
 test("WhatsApp: hidden on desktop and, on Android, with the Export reason", () => {

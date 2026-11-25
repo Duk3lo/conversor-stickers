@@ -173,6 +173,7 @@ pub(crate) fn add_links(
     text: String,
     session: State<'_, Arc<Session>>,
 ) -> Result<Vec<EntryUi>, UiError> {
+    crate::edition::require_direct_links(crate::edition::PLAY, &text)?;
     session.add_links(&text)
 }
 

@@ -11,11 +11,21 @@ import {
   type Section,
   sectionWithKey,
 } from "./navigation.ts";
+import { PLAY_LOGO_COLORS, play } from "./edition.ts";
 import { platform } from "./platform.ts";
 import { folderButtonVisible, type SavedFolder } from "./saved-folder.ts";
 import type { ShellActions, ShellView } from "./views.ts";
 
 const Panels: readonly PanelVisible[] = [...Roots, "detail", "category", "search", "editor"];
+
+function paintPlayLogo(): void {
+  for (const part of document.querySelectorAll<SVGElement>(".header-logo [data-logo]")) {
+    const color = PLAY_LOGO_COLORS[part.dataset["logo"] ?? ""];
+    if (color === undefined) continue;
+    const attribute = part.tagName === "stop" ? "stop-color" : part.hasAttribute("stroke") ? "stroke" : "fill";
+    part.setAttribute(attribute, color);
+  }
+}
 
 function idPanel(panel: PanelVisible): string {
   return panel === "editor" ? "editor" : `panel-${panel}`;
@@ -55,13 +65,17 @@ export function createShellView(actions: ShellActions): { render(view: ShellView
   let previous: Navigation | null = null;
 
   document.documentElement.dataset["platform"] = platform;
+  if (play) {
+    document.documentElement.dataset["edition"] = "play";
+    paintPlayLogo();
+  }
   for (const [root, button] of destinations) {
     const name = destinationLabel(platform, root);
     element<HTMLSpanElement>(`destination-${root}-text`).textContent = name;
     button.setAttribute("aria-label", destinationLabel("desktop", root));
     button.addEventListener("click", () => actions.goToRoot(root));
   }
-  const label = tabLabel("download");
+  const label = tabLabel("download", play);
   element<HTMLSpanElement>("tab-download-name").textContent = label.name;
   element<HTMLSpanElement>("tab-download-detail").textContent = label.detail;
   element<HTMLElement>("credits").hidden = !controls(platform).ffmpegCredits;

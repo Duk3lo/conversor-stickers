@@ -15,6 +15,7 @@ import { asErrorUi, type EntryUi, type QueueEvent, type SaveVideoEvent } from ".
 import { createDownloads } from "./downloads.ts";
 import { errorMessage } from "./messages.ts";
 import { controls } from "./mobile.ts";
+import { play } from "./edition.ts";
 import { openEditor, changeSection, withoutEntry } from "./navigation.ts";
 import {
   classifyPasted,
@@ -104,6 +105,14 @@ export function createDownloadSection(context: Context, busyEditor: () => boolea
   }
 
   function carryLinks(text: string): void {
+    // Without a link box, a pasted link goes straight to the backend, which only accepts direct files.
+    if (play) {
+      context.navigate(changeSection(context.nav(), "download"));
+      void addLinks(text).then((added) => {
+        if (!added) notifyPasted(view.linksError ?? "No se pudo añadir el enlace.", true);
+      });
+      return;
+    }
     context.navigate(changeSection(context.nav(), "download"));
     screen.setLinks(text);
   }

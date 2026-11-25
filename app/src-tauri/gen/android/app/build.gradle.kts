@@ -7,6 +7,10 @@ plugins {
     id("com.chaquo.python")
 }
 
+// Google Play edition (android-play.sh): own launcher icon (src/play/res) and no yt-dlp in the
+// bundle. The app code never starts Python there: the backend rejects links that need yt-dlp.
+val playEdition = System.getenv("CONVERSOR_PLAY") == "1"
+
 val tauriProperties = Properties().apply {
     val propFile = file("tauri.properties")
     if (propFile.exists()) {
@@ -51,6 +55,9 @@ android {
             "CONVERSOR_KEYSTORE / CONVERSOR_KEYSTORE_PASSWORD not set: the release APK will be unsigned."
         )
         null
+    }
+    if (playEdition) {
+        sourceSets.getByName("release").res.srcDir("src/play/res")
     }
     buildTypes {
         getByName("debug") {
@@ -110,8 +117,11 @@ android {
 chaquopy {
     defaultConfig {
         version = "3.14"
-        pip {
-            install("-r", "requirements-android.txt")
+        // The Play edition leaves yt-dlp out; link_download.py already tolerates its absence.
+        if (!playEdition) {
+            pip {
+                install("-r", "requirements-android.txt")
+            }
         }
     }
 }
