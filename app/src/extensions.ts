@@ -1,7 +1,7 @@
 // The smallest metadata: it formats national numbers like `max`; only the stricter `isValid` differs, unused here.
 import { type CountryCode, getCountries, getCountryCallingCode, isSupportedCountry, parsePhoneNumberFromString } from "libphonenumber-js/min";
 
-import type { ExtensionUi } from "./contract.ts";
+import type { ExtensionUi, FramingSpecUi } from "./contract.ts";
 import type { ClipVideoState } from "./clip-video.ts";
 import type { Platform } from "./mobile.ts";
 import { githubEdition } from "./edition.ts";
@@ -165,10 +165,24 @@ export function sendTargets(list: readonly InstalledExtension[], platform: Platf
   return list.filter((installed) => installed.accepted && installed.number !== null);
 }
 
-/** The caption the chat reads: `sonido=5` when the extension asks for the sound; `null` otherwise. */
-export function extensionCaption(extension: ExtensionUi, soundS: number): string | null {
+/** The bot shipped with the app is the only one known to read how the video is framed. */
+function framingSettings(extension: ExtensionUi, framing: FramingSpecUi | null): string[] {
+  // Keeping the whole video is the bot's default, so nothing has to be said.
+  if (extension.id !== builtinExtension.id || framing === null || framing.mode !== "crop") return [];
+  const value = (number: number): string => String(Math.round(number * 1000) / 1000);
+  const settings = ["encuadre=recortar"];
+  if (value(framing.zoom) !== "1") settings.push(`zoom=${value(framing.zoom)}`);
+  if (value(framing.center_x) !== "0.5") settings.push(`x=${value(framing.center_x)}`);
+  if (value(framing.center_y) !== "0.5") settings.push(`y=${value(framing.center_y)}`);
+  return settings;
+}
+
+/** The caption the chat reads: `sonido=5` when the extension asks for the sound; `null` if it says nothing. */
+export function extensionCaption(extension: ExtensionUi, soundS: number, framing: FramingSpecUi | null = null): string | null {
   const seconds = Math.min(Math.floor(soundS), MAX_SOUND_S);
-  return extension.sound && seconds >= 1 ? `sonido=${seconds}` : null;
+  const sound = extension.sound && seconds >= 1 ? [`sonido=${seconds}`] : [];
+  const settings = [...sound, ...framingSettings(extension, framing)];
+  return settings.length === 0 ? null : settings.join(" ");
 }
 
 /** A notice, not an error: the range is longer than the sound the extension says it takes. */

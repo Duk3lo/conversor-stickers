@@ -242,6 +242,8 @@ const examples: {
     "busy",
     "other",
     "invalid_pack",
+    "bot_unreachable",
+    "bot_unauthorized",
   ],
 };
 

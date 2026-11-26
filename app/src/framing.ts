@@ -76,6 +76,18 @@ export function withZoom(spec: FramingSpecUi, zoom: number, width: number, heigh
   return clampFraming({ ...spec, zoom }, width, height);
 }
 
+/** Two fingers: the zoom grows as much as the distance between them did. */
+export function pinchFraming(
+  start: FramingSpecUi,
+  startDistancePx: number,
+  distancePx: number,
+  width: number,
+  height: number,
+): FramingSpecUi {
+  const ratio = startDistancePx > 0 ? distancePx / startDistancePx : 1;
+  return withZoom(start, start.zoom * ratio, width, height);
+}
+
 export function framingResetText(spec: FramingSpecUi): string | null {
   const moved = spec.center_x !== 0.5 || spec.center_y !== 0.5 || spec.zoom !== 1;
   return moved ? "Centrar y quitar el zoom" : null;

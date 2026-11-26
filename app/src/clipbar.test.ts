@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   barFraction,
+  dragsWholeRange,
   clipBarLabels,
   durationFits,
   editorRecommendedS,
@@ -179,4 +180,12 @@ test("a drag that did not change the range never snaps", () => {
 test("a drag that starts inside the margin is a fine adjustment and does not snap", () => {
   assert.equal(snapToOriginal(original, original, { start: 0.2, end: 6.2 }, 0.3), null);
   assert.equal(snapToOriginal(original, { start: 0.2, end: 6.2 }, { start: 0.1, end: 6.1 }, 0.3), null);
+});
+
+test("on a long video a range too narrow to grab by its ends is moved whole on the general bar", () => {
+  // 6 s of 180 s on a 346 px bar is about 11 px.
+  assert.equal(dragsWholeRange({ start: 90, end: 96 }, 180, 346), true);
+  assert.equal(dragsWholeRange({ start: 90, end: 130 }, 180, 346), false);
+  // A short video has no zoomed bar, so its ends must stay reachable here.
+  assert.equal(dragsWholeRange({ start: 1, end: 3 }, 30, 346), false);
 });

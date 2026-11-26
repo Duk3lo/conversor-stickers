@@ -402,6 +402,11 @@ pub(crate) enum UiErrorKind {
     Busy,
     Other,
     InvalidPack,
+    // Only the bot commands, which `play` does not have, build these two.
+    #[cfg_attr(not(edition = "github"), allow(dead_code))]
+    BotUnreachable,
+    #[cfg_attr(not(edition = "github"), allow(dead_code))]
+    BotUnauthorized,
 }
 
 #[cfg(test)]
@@ -736,20 +741,25 @@ mod tests {
 
     #[test]
     fn every_desktop_command_is_in_the_interface() {
-        let interface: String = ["contract.ts", "contract-community.ts", "contract-gifs.ts"]
-            .iter()
-            .map(|file| {
-                let path = format!("{}/../src/{file}", env!("CARGO_MANIFEST_DIR"));
-                std::fs::read_to_string(path).unwrap()
-            })
-            .collect();
+        let interface: String = [
+            "contract.ts",
+            "contract-bot.ts",
+            "contract-community.ts",
+            "contract-gifs.ts",
+        ]
+        .iter()
+        .map(|file| {
+            let path = format!("{}/../src/{file}", env!("CARGO_MANIFEST_DIR"));
+            std::fs::read_to_string(path).unwrap()
+        })
+        .collect();
         for command in declared_commands()
             .into_iter()
             .filter(|command| !is_mobile_command(command))
         {
             assert!(
                 interface.contains(&format!("(\"{command}\"")),
-                "{command} is not in contract.ts, contract-community.ts or contract-gifs.ts"
+                "{command} is not in any contract*.ts"
             );
         }
     }
@@ -841,6 +851,8 @@ mod tests {
             UiErrorKind::Busy,
             UiErrorKind::Other,
             UiErrorKind::InvalidPack,
+            UiErrorKind::BotUnreachable,
+            UiErrorKind::BotUnauthorized,
         ];
         assert_eq!(serde_json::to_value(kinds).unwrap(), example("error_kinds"));
     }

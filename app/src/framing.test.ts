@@ -9,6 +9,7 @@ import {
   dragFraming,
   withZoom,
   framingResetText,
+  pinchFraming,
 } from "./framing.ts";
 
 test("the default framing is a centred crop at 1x", () => {
@@ -71,4 +72,11 @@ test("changing zoom keeps the square inside the frame", () => {
 test("the reset text depends on the mode", () => {
   assert.equal(framingResetText({ ...DEFAULT_FRAMING, zoom: 2 }), "Centrar y quitar el zoom");
   assert.equal(framingResetText(DEFAULT_FRAMING), null);
+});
+
+test("pinching zooms by how far the fingers moved apart, within the limits", () => {
+  assert.equal(pinchFraming(DEFAULT_FRAMING, 100, 200, 640, 360).zoom, 2);
+  assert.equal(pinchFraming({ ...DEFAULT_FRAMING, zoom: 2 }, 200, 100, 640, 360).zoom, 1);
+  assert.equal(pinchFraming(DEFAULT_FRAMING, 10, 900, 640, 360).zoom, MAX_ZOOM);
+  assert.equal(pinchFraming({ ...DEFAULT_FRAMING, zoom: 2 }, 0, 100, 640, 360).zoom, 2);
 });

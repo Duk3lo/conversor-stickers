@@ -6,6 +6,7 @@ import {
   NUDGE_S,
   barFraction,
   clipBarLabels,
+  dragsWholeRange,
   durationFits,
   editorRecommendedS,
   maxRangeS,
@@ -46,12 +47,14 @@ import {
   clampFraming,
   cropSquare,
   dragFraming,
+  pinchFraming,
   framingResetText,
   withZoom,
   zoomText,
 } from "./framing.ts";
 import { errorMessage } from "./messages.ts";
 import { sendTargets, soundDurationNotice, stillImageNotice } from "./extensions.ts";
+import { botBox, manualTargets } from "./bot-status.ts";
 import { canSaveClipVideo, clipVideoText, openWhatsappVisible } from "./clip-video.ts";
 import { soundText } from "./sound.ts";
 import { folderButtonVisible } from "./saved-folder.ts";
@@ -186,6 +189,15 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   const openWhatsappButton = element<HTMLButtonElement>("open-whatsapp");
   const extensionNotices = element<HTMLDivElement>("extension-notices");
   const extensionSends = element<HTMLDivElement>("extension-sends");
+  const botBoxNode = element<HTMLDivElement>("bot-box");
+  const botLine = element<HTMLParagraphElement>("bot-line");
+  const botOpenButton = element<HTMLButtonElement>("bot-open");
+  const botSendButton = element<HTMLButtonElement>("bot-send");
+  const botSendNote = element<HTMLParagraphElement>("bot-send-note");
+  const botCaptionBox = element<HTMLDivElement>("bot-caption-box");
+  const botCaption = element<HTMLElement>("bot-caption");
+  const botCaptionCopy = element<HTMLButtonElement>("bot-caption-copy");
+  const botCaptionCopied = element<HTMLSpanElement>("bot-caption-copied");
   const soundFolder = element<HTMLButtonElement>("sound-folder");
   const announcement = element<HTMLParagraphElement>("announcement");
   const createError = element<HTMLDivElement>("error-create");
@@ -329,6 +341,45 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   resetFraming.addEventListener("click", () => changeFraming({ center_x: 0.5, center_y: 0.5, zoom: 1 }));
 
   let squareDrag: { x: number; y: number; start: FramingSpecUi } | null = null;
+  // Fingers on the preview while cropping, as in WhatsApp: one moves the video, two pinch it. Easy mode
+  // shows only the result, without the square, so there the drag is on the preview itself.
+  const fingers = new Map<number, { x: number; y: number }>();
+  let pinch: { distance: number; start: FramingSpecUi } | null = null;
+  let resultDrag: { x: number; y: number; start: FramingSpecUi } | null = null;
+  const fingerDistance = (): number => {
+    const [a, b] = [...fingers.values()];
+    return a === undefined || b === undefined ? 0 : Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  preview.addEventListener("pointerdown", (event) => {
+    if (view === null || creating() || view.framing.mode !== "crop") return;
+    fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    resultDrag = square.hidden && fingers.size === 1 ? { x: event.clientX, y: event.clientY, start: view.framing } : null;
+    if (fingers.size === 2) {
+      squareDrag = null;
+      pinch = { distance: fingerDistance(), start: view.framing };
+    }
+  });
+  preview.addEventListener("pointermove", (event) => {
+    const size = sourceSize();
+    if (!fingers.has(event.pointerId) || size === null) return;
+    fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pinch !== null && fingers.size === 2) {
+      actions.setFraming(pinchFraming(pinch.start, pinch.distance, fingerDistance(), size.width, size.height));
+    } else if (resultDrag !== null) {
+      const box = previewFrame.getBoundingClientRect();
+      // The video follows the finger, so the crop moves the other way.
+      const [dx, dy] = [resultDrag.x - event.clientX, resultDrag.y - event.clientY];
+      actions.setFraming(dragFraming(resultDrag.start, dx, dy, box.width, box.height, size.width, size.height));
+    }
+  });
+  const liftFinger = (event: PointerEvent): void => {
+    fingers.delete(event.pointerId);
+    resultDrag = null;
+    if (fingers.size < 2) pinch = null;
+  };
+  // On the window: a finger can be lifted outside the preview.
+  window.addEventListener("pointerup", liftFinger);
+  window.addEventListener("pointercancel", liftFinger);
   square.addEventListener("pointerdown", (event) => {
     if (view === null || creating()) return;
     event.preventDefault();
@@ -386,6 +437,14 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     if (id !== undefined) actions.sendToExtension(id);
   });
   soundFolder.addEventListener("click", () => actions.openFolder("sounds"));
+  botOpenButton.addEventListener("click", () => actions.openBotPanel());
+  botSendButton.addEventListener("click", () => actions.sendToBot());
+  botCaptionCopy.addEventListener("click", () => {
+    navigator.clipboard.writeText(botCaption.textContent ?? "").then(
+      () => setText(botCaptionCopied, "Copiado."),
+      () => setText(botCaptionCopied, "No se pudo copiar: selecciona el texto y cópialo a mano."),
+    );
+  });
   shareButton.addEventListener("click", () => actions.share());
   sendWhatsappButton.addEventListener("click", () => actions.sendToWhatsapp());
   openAddButton.addEventListener("click", () => {
@@ -498,8 +557,14 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
       event.preventDefault();
       bar.track.setPointerCapture(event.pointerId);
       const onHandle = event.target === bar.startHandle || event.target === bar.endHandle;
-      if (!onHandle && value > clipRange.start && value < clipRange.end) {
-        drag = { bar, pointerId: event.pointerId, handle: null, grab: value - clipRange.start, before: clipRange };
+      const inside = value > clipRange.start && value < clipRange.end;
+      const whole =
+        bar === generalBar && dragsWholeRange(clipRange, view?.duration ?? 0, bar.track.getBoundingClientRect().width);
+      if (whole || (!onHandle && inside)) {
+        // Touched outside a narrow range, it jumps there centred on the finger.
+        const grab = inside ? value - clipRange.start : (clipRange.end - clipRange.start) / 2;
+        drag = { bar, pointerId: event.pointerId, handle: null, grab, before: clipRange };
+        if (!inside) actions.moveRange(value - grab);
         return;
       }
       let handle: Handle;
@@ -966,7 +1031,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     else createButton.removeAttribute("aria-disabled");
     cancelButton.hidden = !inCourse;
     createWithSoundButton.hidden = !canSaveClipVideo(platform, v.destination, v.entry.media);
-    createWithSoundButton.disabled = v.clipRange === null || v.clipVideo.kind === "saving";
+    createWithSoundButton.disabled = v.clipRange === null || v.clipVideo.kind === "saving" || v.botSend.kind === "running";
     clipVideoState.hidden = v.clipVideo.kind === "idle";
     clipVideoState.classList.toggle("message-error", v.clipVideo.kind === "failed");
     clipVideoState.textContent = clipVideoText(v.clipVideo);
@@ -976,7 +1041,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     soundState.textContent = soundText(v.sound);
     clipVideoFolder.hidden = !folderButtonVisible(platform, v.clipVideo.kind === "saved" ? "videos" : null);
     openWhatsappButton.hidden = !openWhatsappVisible(platform, v.clipVideo);
-    const targets = sendTargets(v.extensions, platform, v.clipVideo);
+    const targets = manualTargets(sendTargets(v.extensions, platform, v.clipVideo), v.bot);
     extensionSends.replaceChildren(
       ...targets.map(({ extension }) => {
         const button = create("button", "button-text", `Enviar a ${extension.name}`);
@@ -992,6 +1057,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
         .flatMap((text) => text ?? [])
         .map((text) => create("p", "secondary small", text)),
     );
+    renderBot(v, inCourse);
     soundFolder.hidden = !folderButtonVisible(platform, v.sound.kind === "saved" ? "sounds" : null);
     editorPanel.dataset["mode"] = v.mode;
     for (const entry of modeSwitch.querySelectorAll<HTMLInputElement>("input")) entry.checked = entry.value === v.mode;
@@ -1020,6 +1086,33 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     result.hidden = c.kind !== "done";
     editorPanel.dataset["bar"] = bottomAction(platform, "editor", c.kind === "done");
     if (c.kind === "done") renderResult(v, c);
+  }
+
+  /** Only on a real change, so screen readers do not repeat it every time the bot is asked. */
+  function setText(node: HTMLElement, text: string): void {
+    if (node.textContent !== text) node.textContent = text;
+  }
+
+  function renderBot(v: EditorView, creating: boolean): void {
+    const box = botBox(v.destination, v.entry.media, v.extensions, v.bot);
+    botBoxNode.hidden = box === null;
+    if (box === null) return;
+    setText(botLine, box.line);
+    setText(botOpenButton, box.panelLabel);
+    botOpenButton.disabled = creating || v.botSend.kind === "running";
+    const send = box.send;
+    botSendButton.hidden = send === null;
+    botSendButton.disabled =
+      send?.reason != null || creating || v.clipRange === null || v.clipVideo.kind === "saving" || v.botSend.kind === "running";
+    const state = v.botSend;
+    const hint = "Deja el tramo en 10 s como máximo, activa el bot si está en pausa, guarda el clip y lo envía.";
+    const note = state.kind === "running" ? state.text : state.kind === "done" ? state.message : (send?.reason ?? hint);
+    setText(botSendNote, send === null && state.kind === "idle" ? "" : note);
+    botSendNote.classList.toggle("message-error", state.kind === "done" && !state.sent);
+    const caption = state.kind === "done" ? state.caption : null;
+    botCaptionBox.hidden = caption === null;
+    if (caption !== botCaption.textContent) setText(botCaptionCopied, "");
+    setText(botCaption, caption ?? "");
   }
 
   function renderAdd(v: EditorView, c: Extract<Creation, { kind: "done" }>): void {

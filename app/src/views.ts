@@ -8,6 +8,8 @@ import type { GifProvider, GifProviderUi, StickerKlipyUi } from "./contract-gifs
 import type { KlipyRow } from "./klipy.ts";
 import type { Queue } from "./queue.ts";
 import type { Saving } from "./saving.ts";
+import type { BotSendState } from "./bot-send.ts";
+import type { BotState } from "./bot-status.ts";
 import type { ClipVideoState } from "./clip-video.ts";
 import type { SoundState } from "./sound.ts";
 import type { InstalledExtension } from "./extensions.ts";
@@ -158,6 +160,9 @@ export interface EditorView {
   readonly clipVideo: ClipVideoState;
   /** The installed extensions, as the settings left them when the editor opened. */
   readonly extensions: readonly InstalledExtension[];
+  /** The user's bot; `null` in `play`, which has none. */
+  readonly bot: BotState | null;
+  readonly botSend: BotSendState;
   readonly packs: {
     readonly open: DestinationPack | null;
     readonly compatible: readonly DestinationPack[];
@@ -190,6 +195,8 @@ export interface EditorActions {
   openFolder(folder: SavedFolder): void;
   openWhatsapp(): void;
   sendToExtension(id: string): void;
+  openBotPanel(): void;
+  sendToBot(): void;
   share(): void;
   sendToWhatsapp(): void;
   addPack(id: number): void;

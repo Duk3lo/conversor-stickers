@@ -9,6 +9,8 @@ const ZOOM_SPAN_S = 30;
 const SNAP_MARGIN_S = 0.3;
 const SNAP_MARGIN_MAX_S = 1;
 const SNAP_MARGIN_PX = 4;
+/** Two touch targets: a narrower range cannot be grabbed in the middle without taking an end. */
+const MIN_RESIZABLE_PX = 48;
 
 /** The seconds of the video that a clip bar covers from its left edge to its right one. */
 export interface BarSpan {
@@ -101,6 +103,11 @@ export function zoomSpan(current: ClipRange, durationS: number): BarSpan | null 
   const centred = (current.start + current.end - length) / 2;
   const from = Math.min(Math.max(centred, 0), durationS - length);
   return { from, to: from + length };
+}
+
+/** Whether a drag on the general bar moves the range whole, leaving its ends to the zoomed bar. */
+export function dragsWholeRange(current: ClipRange, durationS: number, widthPx: number): boolean {
+  return durationS > ZOOM_SPAN_S && ((current.end - current.start) / durationS) * widthPx < MIN_RESIZABLE_PX;
 }
 
 export function barFraction(second: number, span: BarSpan): number {

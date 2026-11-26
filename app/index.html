@@ -560,7 +560,7 @@
             <div class="preview-content" id="preview-content"><div class="preview-frame" id="preview-frame">
               <video id="video" muted playsinline preload="auto" aria-label="Vista previa del tramo"></video>
               <img id="editor-image" alt="" />
-              <div class="framing-square adv-only" id="framing-square" role="group" tabindex="0" aria-label="Zona que se queda en el sticker. Muévela con el dedo o con las flechas." hidden></div>
+              <div class="framing-square" id="framing-square" role="group" tabindex="0" aria-label="Zona que se queda en el sticker. Muévela con el dedo o con las flechas." hidden></div>
             </div></div>
             <p id="preview-message" class="preview-message"></p>
           </div>
@@ -622,6 +622,18 @@
               <svg class="icon" aria-hidden="true"><use href="#icon-create" /></svg>
               Sticker con sonido (experimental)
             </button>
+
+            <div id="bot-box" class="bot-box" hidden>
+              <p id="bot-line" class="small" role="status"></p>
+              <button type="button" id="bot-open" class="button-secondary button-small">Abrir «Mi bot»</button>
+              <button type="button" id="bot-send" class="button-main" aria-describedby="bot-send-note" hidden>Enviar al bot</button>
+              <p id="bot-send-note" class="secondary small" role="status"></p>
+              <div id="bot-caption-box" class="actions-row" hidden>
+                <span class="small">Pie: <code id="bot-caption"></code></span>
+                <button type="button" id="bot-caption-copy" class="button-secondary button-small">Copiar pie</button>
+                <span id="bot-caption-copied" class="secondary small" role="status"></span>
+              </div>
+            </div>
 
             <div class="control adv-only">
               <div class="control-header">
@@ -685,7 +697,7 @@
             </fieldset>
           </div>
 
-          <fieldset class="control segmented adv-only" id="controls-framing">
+          <fieldset class="control segmented" id="controls-framing">
             <legend class="control-title">Encuadre</legend>
             <div class="segments">
               <label class="segment"><input type="radio" name="framing" value="crop" /><span>Recortar</span></label>
@@ -700,7 +712,7 @@
               <input type="range" id="framing-zoom" min="1" max="4" step="0.05" value="1" />
               <button type="button" id="framing-reset" class="button-secondary button-small">Centrar y quitar el zoom</button>
             </div>
-            <div id="framing-fit-box" class="stack" hidden>
+            <div id="framing-fit-box" class="stack adv-only" hidden>
               <div class="sub-control">
                 <span class="control-title" id="title-background">Fondo</span>
                 <div class="segments segments-compact" role="group" aria-labelledby="title-background">

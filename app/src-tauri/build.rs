@@ -61,14 +61,23 @@ const COMMANDS: &[&str] = &[
     "open_whatsapp",
 ];
 
-// Only in the `github` edition (`cfg(edition = "github")`, set by `main`): extensions and the link
-// downloader. In `play` they are neither declared nor granted.
+// Only in the `github` edition (`cfg(edition = "github")`, set by `main`): extensions, the link
+// downloader and the connection to the user's bot. In `play` they are neither declared nor granted.
 const GITHUB_COMMANDS: &[&str] = &[
     "add_links",
     "download_queue",
     "cancel_downloads",
     "install_extension",
     "send_to_bot",
+    "bot_connection",
+    "bot_connect",
+    "bot_disable",
+    "bot_status",
+    "bot_activate",
+    "bot_pause",
+    "bot_link",
+    "bot_unlink",
+    "bot_open_chat",
 ];
 
 // The KLIPY key is baked in as `BUNDLED_KLIPY_KEY` only if the build sets `KLIPY_KEY` explicitly

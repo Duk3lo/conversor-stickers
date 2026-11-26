@@ -1,4 +1,6 @@
 import { type ExtensionUi, asErrorUi, installExtension as pickExtension } from "./contract.ts";
+import { type BotPanelDependencies, createBotPanel } from "./bot-panel.ts";
+import { BOT_EXTENSION_ID, botEnabled, numberHeld } from "./bot-status.ts";
 import { create, element, pressedButton, showMessage } from "./dom.ts";
 import {
   type InstalledExtension,
@@ -14,7 +16,7 @@ import {
 import { errorMessage } from "./messages.ts";
 import { localStore } from "./store.ts";
 
-export function createExtensionsSection(): void {
+export function createExtensionsSection(bot: BotPanelDependencies): void {
   const store = localStore();
   const installButton = element<HTMLButtonElement>("extension-install");
   const errorLine = element<HTMLParagraphElement>("extension-error");
@@ -22,13 +24,17 @@ export function createExtensionsSection(): void {
   const listBox = element<HTMLDivElement>("extension-list");
   const countries = countryOptions();
   let list = loadExtensions(store);
+  const botPanel = createBotPanel(bot);
+  /** Locks the bot's number while its connection is enabled; set by the card that has the panel. */
+  let holdBotNumber: () => void = () => undefined;
 
   function set(next: InstalledExtension[]): void {
     list = next;
     saveExtensions(store, list);
   }
 
-  function card({ extension, accepted, number }: InstalledExtension): HTMLElement {
+  function card(installed: InstalledExtension): HTMLElement {
+    const { extension, accepted, number } = installed;
     const box = create("div", "extension-card");
     box.dataset["extension"] = extension.id;
     const title = create("h4", "subtitle", extension.name);
@@ -50,12 +56,23 @@ export function createExtensionsSection(): void {
     remove.type = "button";
     remove.dataset["remove"] = extension.id;
     remove.setAttribute("aria-label", `Quitar ${extension.name}`);
-    box.append(title, description, link, notice, check, numberForm(extension, number), remove);
+    const { form, hold } = numberForm(extension, number);
+    box.append(title, description, link, notice, check, form);
+    if (extension.id === BOT_EXTENSION_ID) {
+      botPanel.hidden = !accepted;
+      holdBotNumber = () => {
+        const current = list.find((candidate) => candidate.extension.id === BOT_EXTENSION_ID);
+        hold(current !== undefined && numberHeld(current, bot.monitor.state()));
+      };
+      holdBotNumber();
+      box.append(botPanel);
+    }
+    box.append(remove);
     return box;
   }
 
   /** A saved number is shown locked; it is only stored with «Guardar número». */
-  function numberForm({ id, name }: ExtensionUi, saved: string | null): HTMLFormElement {
+  function numberForm({ id, name }: ExtensionUi, saved: string | null): { form: HTMLFormElement; hold(held: boolean): void } {
     const form = create("form", "extension-number");
     form.noValidate = true;
     const inputId = `extension-number-${id}`;
@@ -92,6 +109,9 @@ export function createExtensionsSection(): void {
     const change = create("button", "button-secondary", "Cambiar");
     change.type = "button";
     change.setAttribute("aria-label", `Cambiar número de ${name}`);
+    const heldNote = create("p", "secondary small", "Para cambiar el número, primero pulsa «Deshabilitar» en «Mi bot».");
+    heldNote.id = `${inputId}-held`;
+    heldNote.hidden = true;
 
     const typed = () => buildNumber(input.value, countries.find(({ code }) => code === countrySelect.value)?.code ?? null);
 
@@ -141,7 +161,8 @@ export function createExtensionsSection(): void {
       set(changeExtension(list, id, { number: saved }));
       showPreview();
       setLocked(saved !== null);
-      if (saved !== null) change.focus();
+      if (id === BOT_EXTENSION_ID) holdBotNumber();
+      if (saved !== null && !change.disabled) change.focus();
     });
     change.addEventListener("click", () => {
       setLocked(false);
@@ -149,14 +170,32 @@ export function createExtensionsSection(): void {
       input.focus();
     });
 
-    form.append(countryLabel, countrySelect, label, input, preview, numberError, save, change);
+    form.append(countryLabel, countrySelect, label, input, preview, numberError, save, change, heldNote);
     setLocked(saved !== null);
-    return form;
+
+    function hold(held: boolean): void {
+      // Without a saved number there is nothing to protect: it can still be typed and saved.
+      const locked = held && saved !== null;
+      if (locked && !input.readOnly) setLocked(true);
+      change.disabled = locked;
+      heldNote.hidden = !locked;
+      if (locked) change.setAttribute("aria-describedby", heldNote.id);
+      else change.removeAttribute("aria-describedby");
+    }
+
+    return { form, hold };
   }
 
   function render(): void {
+    holdBotNumber = () => undefined;
     listBox.replaceChildren(...list.map(card));
     empty.hidden = list.length > 0;
+  }
+
+  /** Without its accepted panel there would be no way to disable the connection. */
+  function disableBot(id: string): void {
+    if (id !== BOT_EXTENSION_ID || !botEnabled(bot.monitor.state())) return;
+    bot.monitor.disable().catch((failure: unknown) => showMessage(errorLine, errorMessage(asErrorUi(failure))));
   }
 
   installButton.addEventListener("click", () => {
@@ -167,6 +206,8 @@ export function createExtensionsSection(): void {
         if (extension === null) return;
         set(installExtension(list, extension));
         render();
+        // Installing again asks to accept the notice anew, so the connection stops with it.
+        disableBot(extension.id);
       })
       .catch((failure: unknown) => showMessage(errorLine, errorMessage(asErrorUi(failure))))
       .finally(() => {
@@ -178,15 +219,24 @@ export function createExtensionsSection(): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     const acceptId = target.dataset["accept"];
-    if (acceptId !== undefined) set(changeExtension(list, acceptId, { accepted: target.checked }));
+    if (acceptId === undefined) return;
+    set(changeExtension(list, acceptId, { accepted: target.checked }));
+    if (acceptId === BOT_EXTENSION_ID) {
+      botPanel.hidden = !target.checked;
+      holdBotNumber();
+      if (!target.checked) disableBot(acceptId);
+    }
   });
 
   listBox.addEventListener("click", (event) => {
     const id = pressedButton(event)?.dataset["remove"];
+    // The buttons of the bot panel are inside the list too, without `data-remove`.
     if (id === undefined) return;
     set(removeExtension(list, id));
     render();
+    disableBot(id);
   });
 
+  bot.monitor.subscribe(() => holdBotNumber());
   render();
 }

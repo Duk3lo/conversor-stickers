@@ -13,6 +13,8 @@ import { errorMessage } from "./messages.ts";
 import type { SavedFolder } from "./saved-folder.ts";
 import { back, changeSection, goToRoot, type Navigation, initialNavigation } from "./navigation.ts";
 import { apiGifsReal } from "./api-gifs.ts";
+import { createBotMonitor } from "./bot-monitor.ts";
+import { botApi } from "./contract-bot.ts";
 import { apiReal } from "./catalog-api.ts";
 import { createGifSearchSection } from "./gif-search-section.ts";
 import { createCatalogSection } from "./catalog-section.ts";
@@ -72,6 +74,7 @@ function startApp(): void {
     closeLayer: () => layers.some((close) => close()),
   };
 
+  const bot = githubEdition ? createBotMonitor(botApi) : null;
   const stickers = createStickersSection(context, convertFileSrc);
   const gifs = createGifsSection(context);
   const searchGif = createGifSearchSection(context, { api: apiGifsReal, fileUrl: convertFileSrc });
@@ -80,6 +83,7 @@ function startApp(): void {
     library: stickers.library,
     setLibrary: stickers.setLibrary,
     onGifCreate: gifs.addCreated,
+    bot,
   });
   const klipy = createKlipySection(context, {
     api: apiGifsReal,
@@ -121,8 +125,13 @@ function startApp(): void {
     label.textContent = badge;
     label.hidden = false;
   }
-  if (githubEdition) createExtensionsSection();
-  else element("section-extensions").remove();
+  if (bot === null) element("section-extensions").remove();
+  else {
+    createExtensionsSection({ monitor: bot, platform, openWhatsapp: () => context.openWhatsapp() });
+    document.addEventListener("visibilitychange", () => bot.setForeground(document.visibilityState === "visible"));
+    // A failure stays in the monitor's state, which the panel and the editor show.
+    void bot.load();
+  }
   catalog.onChange(detail.onCatalogChange);
   catalog.onChange(favorites.onCatalogChange);
   createDownloadSection(context, editor.creating);

@@ -2729,6 +2729,75 @@ a {
   align-self: flex-start;
 }
 
+.bot-panel,
+.bot-box,
+.bot-form,
+.bot-pairing {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bot-panel {
+  max-width: 28em;
+  padding-top: 8px;
+  scroll-margin-top: 16px;
+}
+
+.bot-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--touch);
+  padding: 0 12px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radio);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.bot-form input:read-only {
+  color: var(--text-secondary);
+}
+
+.bot-form button,
+.bot-box > .button-small {
+  align-self: flex-start;
+}
+
+.bot-state {
+  font-weight: 600;
+}
+
+.bot-steps {
+  margin: 0;
+  padding-left: 1.5em;
+}
+
+.bot-code-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bot-code {
+  width: 100%;
+  font-family: monospace;
+  font-size: 1.75rem;
+  letter-spacing: 0.1em;
+  user-select: all;
+}
+
+.bot-qr-image {
+  width: min(100%, 18em);
+  height: auto;
+}
+
+#bot-caption {
+  user-select: all;
+}
+
 .custom-number input[aria-invalid="true"] {
   border-color: var(--error);
 }
@@ -2851,4 +2920,24 @@ input:focus-visible {
   background: var(--accent-soft);
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+.bot-dialog {
+  width: min(32rem, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 16px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--surface-hover);
+  border-radius: 12px;
+}
+
+.bot-dialog::backdrop {
+  background: rgb(0 0 0 / 0.65);
+}
+
+/* Two fingers on the video pinch the crop instead of zooming or scrolling the page. */
+[data-framing="crop"] {
+  touch-action: none;
 }

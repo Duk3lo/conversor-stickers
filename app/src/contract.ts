@@ -201,7 +201,9 @@ export type UiErrorKind =
   | "cancelled"
   | "busy"
   | "other"
-  | "invalid_pack";
+  | "invalid_pack"
+  | "bot_unreachable"
+  | "bot_unauthorized";
 
 export interface UiError {
   kind: UiErrorKind;
@@ -223,6 +225,8 @@ const ERROR_KINDS: readonly UiErrorKind[] = [
   "busy",
   "other",
   "invalid_pack",
+  "bot_unreachable",
+  "bot_unauthorized",
 ];
 
 export function asErrorUi(failure: unknown): UiError {

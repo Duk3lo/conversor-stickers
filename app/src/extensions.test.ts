@@ -1,3 +1,4 @@
+import { DEFAULT_FRAMING } from "./framing.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -208,4 +209,18 @@ test("the built-in extension mirrors its bundled manifest", () => {
 test("Argentina: a mobile written with 15 but without the area code is rejected", () => {
   assert.equal(buildNumber("15 2345-6789", "AR").kind, "invalid");
   assert.equal(buildNumber("015 2345-6789", "AR").kind, "invalid");
+});
+
+test("the caption tells the built-in bot how the editor frames the video", () => {
+  const bot = builtinExtension;
+  assert.equal(extensionCaption(bot, 5, DEFAULT_FRAMING), "sonido=5 encuadre=recortar");
+  assert.equal(
+    extensionCaption(bot, 5, { ...DEFAULT_FRAMING, zoom: 1.5, center_x: 1 / 3, center_y: 0.5 }),
+    "sonido=5 encuadre=recortar zoom=1.5 x=0.333",
+  );
+  const longest = extensionCaption(bot, 10, { ...DEFAULT_FRAMING, zoom: 3.95, center_x: 0.1234, center_y: 0.8766 }) ?? "";
+  assert.ok(longest.length <= 80 && /^[a-z0-9=. ]+$/.test(longest), longest);
+  // The whole video is what the bot does by default, so an older bot still understands the caption.
+  assert.equal(extensionCaption(bot, 5, { ...DEFAULT_FRAMING, mode: "fit" }), "sonido=5");
+  assert.equal(extensionCaption({ ...bot, id: "otra" }, 5, DEFAULT_FRAMING), "sonido=5");
 });
