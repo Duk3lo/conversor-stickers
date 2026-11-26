@@ -20,7 +20,7 @@ class SavedVideosTest {
 
   @Test
   fun theNameIsShort() {
-    assertEquals(80, SavedVideos.displayName("a".repeat(200) + ".mp4").length)
+    assertEquals("a".repeat(80) + ".mp4", SavedVideos.displayName("a".repeat(200) + ".mp4"))
   }
 
   @Test

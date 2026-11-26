@@ -10,7 +10,8 @@
     "check": "tsc --noEmit && node --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "@tauri-apps/api": "2.12.5"
+    "@tauri-apps/api": "2.12.5",
+    "libphonenumber-js": "1.13.16"
   },
   "devDependencies": {
     "typescript": "7.0.2",

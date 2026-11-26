@@ -28,7 +28,7 @@ import {
   moveStart,
   clipRangeByDefault,
 } from "./crop.ts";
-import { fitToTime, maxRangeS, moveRange, readyMaxRange } from "./clipbar.ts";
+import { RESTORED_NOTE, editorRecommendedS, fitToTime, moveRange, snapToOriginal } from "./clipbar.ts";
 import { platform } from "./platform.ts";
 import { initialSound, soundRequest } from "./sound.ts";
 import { createEditorView } from "./editor-view.ts";
@@ -65,6 +65,8 @@ export function createEditorSection(
   let all: PresetUi[] = [];
   let session = 0;
   let window: Window | null = null;
+  // The range the app put when the video was opened, which a drag can snap back to.
+  let originalClipRange: ClipRange | null = null;
   let estimateKey: string | null = null;
   const store = localStore();
   let mode: EditorMode = loadMode(store);
@@ -194,7 +196,7 @@ export function createEditorSection(
   function change(changes: Partial<EditorView>): void {
     if (view === null || creating()) return;
     if (!internal) easy = null;
-    update({ fitting: null, easyNote: null, preparing: easy !== null, ...changes, creation: { kind: "inactive" } });
+    update({ fitting: null, clipNote: null, easyNote: null, preparing: easy !== null, ...changes, creation: { kind: "inactive" } });
   }
 
   // Runs the fit of «Hacer que quepa» (once) and creates as soon as the estimate allows it.
@@ -275,6 +277,7 @@ export function createEditorSection(
     const duration = media.kind === "video" ? media.duration_s : null;
     estimateKey = null;
     window = null;
+    originalClipRange = preset && duration !== null ? clipRangeByDefault(duration, preset.max_duration_s) : null;
     view = {
       entry: { id: entry.id, name: entry.name, media },
       destination,
@@ -283,9 +286,10 @@ export function createEditorSection(
       preview: { kind: "empty" },
       image: media.kind === "image" ? dependencies.fileUrl(media.path) : null,
       duration,
-      clipRange: preset && duration !== null ? clipRangeByDefault(duration, preset.max_duration_s) : null,
+      clipRange: originalClipRange,
       speed: 1,
       fitting: null,
+      clipNote: null,
       priority: "balance",
       fps: null,
       framing: DEFAULT_FRAMING,
@@ -333,6 +337,11 @@ export function createEditorSection(
     preview.show(null);
     estimator.request(null);
     screen.render(null);
+  }
+
+  function setDuration(seconds: number): void {
+    if (view?.clipRange == null || view.duration === null) return;
+    change({ clipRange: fitToTime(view.clipRange, seconds, view.duration) });
   }
 
   function clipRangeLimit(): number | null {
@@ -576,10 +585,16 @@ export function createEditorSection(
       if (view?.clipRange == null || view.duration === null) return;
       change({ clipRange: moveRange(view.clipRange, startS, view.duration) });
     },
-    fitToTime() {
-      if (view?.clipRange == null || view.duration === null) return;
-      const longest = maxRangeS(view.preset, view.speed, readyMaxRange(view.estimate));
-      if (longest !== null) change({ clipRange: fitToTime(view.clipRange, longest, view.duration) });
+    pickDuration: setDuration,
+    autoFit() {
+      if (view === null) return;
+      const recommended = editorRecommendedS(view);
+      if (recommended !== null) setDuration(recommended);
+    },
+    releaseDrag(before, marginS) {
+      if (view?.clipRange == null || originalClipRange === null) return;
+      const original = snapToOriginal(originalClipRange, before, view.clipRange, marginS);
+      if (original !== null) change({ clipRange: original, clipNote: RESTORED_NOTE });
     },
     pickSide: (sidePx) => change({ sidePx }),
     changeSpeed: (speed) => change({ speed: boundSpeed(speed) }),
@@ -614,14 +629,11 @@ export function createEditorSection(
       all = presets;
       if (view === null) return;
       const preset = view.entry.media.kind === "video" ? presetFor(view.destination, null) : null;
-      update({
-        presets: presetsDe(view.destination),
-        preset,
-        clipRange:
-          preset && view.duration !== null && view.clipRange === null
-            ? clipRangeByDefault(view.duration, preset.max_duration_s)
-            : view.clipRange,
-      });
+      let clipRange = view.clipRange;
+      if (preset && view.duration !== null && clipRange === null) {
+        clipRange = originalClipRange = clipRangeByDefault(view.duration, preset.max_duration_s);
+      }
+      update({ presets: presetsDe(view.destination), preset, clipRange });
     })
     .catch((failure: unknown) => {
       context.notify(`No se pudieron cargar los destinos: ${errorMessage(asErrorUi(failure))}`);

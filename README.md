@@ -208,6 +208,16 @@ To build the APK you need Python 3.14 installed on the machine, because Chaquopy
 `yt-dlp` with pip. FFmpeg for Android is built by `app/src-tauri/ffmpeg-android/build.sh`; see its
 [README](app/src-tauri/ffmpeg-android/README.md).
 
+## Test APK
+
+```sh
+cd app && cargo tauri android build --debug --apk --target aarch64
+adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
+```
+
+The debug build is «Conversor (prueba)», with the `.prueba` application id suffix: it installs next to
+the published app and does not touch its data.
+
 ## Release APK
 
 Signed release APK for arm64 phones:

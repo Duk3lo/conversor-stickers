@@ -27,6 +27,10 @@ export function secondInPreview(secondS: number, fromS: number): number {
   return Math.max(secondS - fromS, 0);
 }
 
+export function secondInVideo(previewS: number, fromS: number): number {
+  return previewS + fromS;
+}
+
 export function createPreview(dependencies: {
   request(id: number, fromS: number): Promise<string>;
   cancel(): void;

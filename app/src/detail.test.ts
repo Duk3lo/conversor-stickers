@@ -13,6 +13,7 @@ import {
   moveOne,
   checkText,
   withdrawnUrl,
+  CONTRIBUTE_URL,
 } from "./detail.ts";
 
 function sticker(id: number): StickerUi {
@@ -189,9 +190,14 @@ test("dragging leaves an exact permutation of the same ids", () => {
   assert.equal(moveTo([10, 20], 0, 5), null);
 });
 
-test("the withdrawal link encodes the pack id", () => {
-  const url = withdrawnUrl("gatos-garabato");
-  assert.ok(url.startsWith("https://github.com/"));
-  assert.ok(url.includes("template=retirada.yml"));
-  assert.ok(url.endsWith(encodeURIComponent("Retirada: gatos-garabato")));
+test("the withdrawal link opens the takedown form of the community repository with the pack id", () => {
+  const url = new URL(withdrawnUrl("gatos-garabato"));
+  assert.equal(url.origin + url.pathname, "https://github.com/Duk3lo/conversor-stickers-comunidad/issues/new");
+  assert.equal(url.searchParams.get("template"), "takedown.yml");
+  assert.equal(url.searchParams.get("title"), "Takedown: gatos-garabato");
+  assert.equal(url.searchParams.get("pack"), "gatos-garabato");
+});
+
+test("the contribute link points to the community repository", () => {
+  assert.equal(CONTRIBUTE_URL, "https://github.com/Duk3lo/conversor-stickers-comunidad/blob/main/CONTRIBUTING.md");
 });

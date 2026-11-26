@@ -578,6 +578,20 @@
                 <div class="crop-handle" id="handle-start" role="slider" tabindex="0" aria-label="Inicio del tramo"></div>
                 <div class="crop-handle" id="handle-end" role="slider" tabindex="0" aria-label="Fin del tramo"></div>
               </div>
+              <div class="crop-zoom" id="crop-zoom" role="group" aria-labelledby="crop-zoom-label" hidden>
+                <p class="secondary small" id="crop-zoom-label">Barra ampliada</p>
+                <div class="crop-track" id="crop-zoom-track">
+                  <div class="crop-clip-range" id="crop-zoom-clip-range"></div>
+                  <div class="crop-shade" id="crop-zoom-shade" aria-hidden="true"></div>
+                  <div class="crop-handle" id="zoom-handle-start" role="slider" tabindex="0" aria-label="Inicio del tramo, barra ampliada"></div>
+                  <div class="crop-handle" id="zoom-handle-end" role="slider" tabindex="0" aria-label="Fin del tramo, barra ampliada"></div>
+                </div>
+                <div class="crop-zoom-ends secondary small" aria-hidden="true">
+                  <span id="crop-zoom-from"></span>
+                  <span id="crop-zoom-to"></span>
+                </div>
+              </div>
+              <p id="clip-note" class="secondary small" role="status"></p>
               <div class="crop-nudges adv-only" id="crop-nudges">
                 <div class="nudge" role="group" aria-label="Inicio del tramo">
                   <button type="button" class="button-secondary" data-nudge="start" data-direction="-1" aria-label="Inicio 0,1 s antes">−0,1</button>
@@ -591,7 +605,17 @@
                 </div>
               </div>
               <p id="crop-output" class="secondary small adv-only"></p>
-              <button type="button" id="fit-time" class="button-secondary button-small adv-only">Ajustar al tiempo que cabe</button>
+              <div class="crop-actions" id="crop-durations" role="group" aria-label="Duración del tramo">
+                <button type="button" class="chip" data-duration="3">3 s</button>
+                <button type="button" class="chip" data-duration="5">5 s</button>
+                <button type="button" class="chip" data-duration="10">10 s</button>
+                <button type="button" class="chip" id="auto-fit">Autoajuste</button>
+              </div>
+              <div class="crop-actions" role="group" aria-label="Reproducción de la vista previa">
+                <button type="button" class="button-secondary button-small" id="play-whole">Reproducir todo el video</button>
+                <button type="button" class="button-secondary button-small" id="start-here">Empezar aquí</button>
+              </div>
+              <p id="playback-note" class="secondary small" hidden></p>
             </div>
 
             <button type="button" id="create-with-sound" class="button-secondary" hidden>

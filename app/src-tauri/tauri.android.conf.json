@@ -1,5 +1,10 @@
 {
   "identifier": "es.conversorstickers.app",
+  "bundle": {
+    "android": {
+      "debugApplicationIdSuffix": ".prueba"
+    }
+  },
   "app": {
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: asset: http://asset.localhost; media-src 'self' blob: asset: http://asset.localhost; connect-src ipc: http://ipc.localhost"

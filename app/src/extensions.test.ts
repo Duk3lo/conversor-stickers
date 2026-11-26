@@ -4,12 +4,14 @@ import { test } from "node:test";
 
 import type { ExtensionUi } from "./contract.ts";
 import {
+  buildNumber,
   builtinExtension,
   changeExtension,
+  countryOptions,
+  defaultCountry,
   extensionCaption,
   installExtension,
   loadExtensions,
-  parseNumber,
   removeExtension,
   saveExtensions,
   sendTargets,
@@ -36,12 +38,81 @@ const bot: ExtensionUi = {
 };
 const saved = { kind: "saved", name: "a" } as const;
 
-test("the chat number is only digits, 8 to 15 of them, or empty", () => {
-  assert.deepEqual(parseNumber("34612345678"), { kind: "number", digits: "34612345678" });
-  assert.deepEqual(parseNumber(" 12345678 "), { kind: "number", digits: "12345678" });
-  assert.deepEqual(parseNumber("  "), { kind: "none" });
-  for (const text of ["1234567", "1234567890123456", "+34612345678", "34 612 345 678"]) {
-    assert.equal(parseNumber(text).kind, "invalid", text);
+function digits(text: string, country: Parameters<typeof buildNumber>[1]): string {
+  const result = buildNumber(text, country);
+  assert.equal(result.kind, "number", `${country} ${text}: ${JSON.stringify(result)}`);
+  return result.kind === "number" ? result.digits : "";
+}
+
+test("an empty chat number is no number", () => {
+  assert.deepEqual(buildNumber("  ", "ES"), { kind: "none" });
+});
+
+test("spaces, hyphens and parentheses are accepted", () => {
+  assert.equal(digits(" (612) 34-56-78 ", "ES"), "34612345678");
+  assert.equal(digits("+34 (612) 345-678", null), "34612345678");
+});
+
+test("any other character is an error, and + only goes first", () => {
+  for (const text of ["612.345.678", "612345678a", "612/345678", "(+34) 612345678", "34+612345678", "++34612345678", "612345678 ext. 2"]) {
+    assert.equal(buildNumber(text, "ES").kind, "invalid", text);
+  }
+});
+
+test("a leading + is international and wins over the chosen country", () => {
+  assert.equal(digits("+44 7400 123456", "ES"), "447400123456");
+  assert.equal(digits("+44 (0)7400 123456", null), "447400123456");
+  assert.equal(digits("+54 9 11 2345-6789", "MX"), "5491123456789");
+  // WhatsApp's old Mexican form: the library calls it impossible, but what the user wrote with + is kept.
+  assert.equal(digits("+52 1 55 1234 5678", null), "5215512345678");
+});
+
+test("an unknown country code or a length outside 8 to 15 digits is an error", () => {
+  for (const text of ["+999 123456789", "+", "+34", "+34 12", "+34 12345678901234"]) {
+    assert.equal(buildNumber(text, null).kind, "invalid", text);
+  }
+});
+
+test("without + a country is needed", () => {
+  const result = buildNumber("612 345 678", null);
+  assert.equal(result.kind, "invalid");
+  assert.ok(result.kind === "invalid" && result.message.startsWith("Elige un país"));
+});
+
+test("the national leading zero depends on the country", () => {
+  assert.equal(digits("612 345 678", "ES"), "34612345678");
+  assert.equal(digits("06 12345678", "IT"), "390612345678");
+  assert.equal(digits("312 345 6789", "IT"), "393123456789");
+  assert.equal(digits("07400 123456", "GB"), "447400123456");
+});
+
+test("Argentina: the 0 and the 15 become the mobile 9; without the 15 no 9 is guessed", () => {
+  assert.equal(digits("011 15-2345-6789", "AR"), "5491123456789");
+  assert.equal(digits("0351 15 234 5678", "AR"), "5493512345678");
+  assert.equal(digits("9 11 2345 6789", "AR"), "5491123456789");
+  assert.equal(digits("11 2345-6789", "AR"), "541123456789");
+});
+
+test("Mexico: ten digits work; the retired 044, 045, 01 and 1 prefixes are errors", () => {
+  assert.equal(digits("55 1234 5678", "MX"), "525512345678");
+  for (const text of ["044 55 1234 5678", "045 55 1234 5678", "01 55 1234 5678", "1 55 1234 5678"]) {
+    assert.equal(buildNumber(text, "MX").kind, "invalid", text);
+  }
+});
+
+test("countries are listed with Spanish names, sorted", () => {
+  const options = countryOptions();
+  assert.ok(options.some((option) => option.code === "ES" && option.label === "España (+34)"));
+  assert.ok(options.some((option) => option.code === "GB" && option.label === "Reino Unido (+44)"));
+  const labels = options.map((option) => option.label);
+  assert.deepEqual(labels, [...labels].sort(new Intl.Collator("es").compare));
+});
+
+test("the default country comes only from an explicit region of the language", () => {
+  assert.equal(defaultCountry("es-ES"), "ES");
+  assert.equal(defaultCountry("es-AR"), "AR");
+  for (const language of ["es", "es-419", "", "no válido"]) {
+    assert.equal(defaultCountry(language), null, language);
   }
 });
 
@@ -132,4 +203,9 @@ test("the built-in extension mirrors its bundled manifest", () => {
     sound: manifest["pie"].sonido,
     max_sound_s: manifest["limites"].sonidoMaxSegundos,
   });
+});
+
+test("Argentina: a mobile written with 15 but without the area code is rejected", () => {
+  assert.equal(buildNumber("15 2345-6789", "AR").kind, "invalid");
+  assert.equal(buildNumber("015 2345-6789", "AR").kind, "invalid");
 });

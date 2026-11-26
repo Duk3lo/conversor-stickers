@@ -2,10 +2,12 @@ import { type ExtensionUi, asErrorUi, installExtension as pickExtension } from "
 import { create, element, pressedButton, showMessage } from "./dom.ts";
 import {
   type InstalledExtension,
+  buildNumber,
   changeExtension,
+  countryOptions,
+  defaultCountry,
   installExtension,
   loadExtensions,
-  parseNumber,
   removeExtension,
   saveExtensions,
 } from "./extensions.ts";
@@ -18,6 +20,7 @@ export function createExtensionsSection(): void {
   const errorLine = element<HTMLParagraphElement>("extension-error");
   const empty = element<HTMLParagraphElement>("extension-empty");
   const listBox = element<HTMLDivElement>("extension-list");
+  const countries = countryOptions();
   let list = loadExtensions(store);
 
   function set(next: InstalledExtension[]): void {
@@ -43,30 +46,112 @@ export function createExtensionsSection(): void {
     accept.dataset["accept"] = extension.id;
     check.append(accept, " He leído y acepto");
 
-    const numberId = `extension-number-${extension.id}`;
-    const errorId = `${numberId}-error`;
-    const label = create("label", "", "Número del chat de destino");
-    label.htmlFor = numberId;
-    const input = create("input", "");
-    input.type = "text";
-    input.id = numberId;
-    input.inputMode = "numeric";
-    input.autocomplete = "off";
-    input.placeholder = "34612345678";
-    input.value = number ?? "";
-    input.setAttribute("aria-describedby", errorId);
-    input.dataset["number"] = extension.id;
-    const numberError = create("p", "message-error");
-    numberError.id = errorId;
-    numberError.setAttribute("role", "alert");
-    numberError.hidden = true;
-
     const remove = create("button", "button-text", "Quitar");
     remove.type = "button";
     remove.dataset["remove"] = extension.id;
     remove.setAttribute("aria-label", `Quitar ${extension.name}`);
-    box.append(title, description, link, notice, check, label, input, numberError, remove);
+    box.append(title, description, link, notice, check, numberForm(extension, number), remove);
     return box;
+  }
+
+  /** A saved number is shown locked; it is only stored with «Guardar número». */
+  function numberForm({ id, name }: ExtensionUi, saved: string | null): HTMLFormElement {
+    const form = create("form", "extension-number");
+    form.noValidate = true;
+    const inputId = `extension-number-${id}`;
+    const previewId = `${inputId}-preview`;
+    const errorId = `${inputId}-error`;
+
+    const countryLabel = create("label", "", "País (si escribes el número sin “+”)");
+    countryLabel.htmlFor = `${inputId}-country`;
+    const countrySelect = create("select", "");
+    countrySelect.id = `${inputId}-country`;
+    countrySelect.append(new Option("Elige un país", ""), ...countries.map(({ code, label }) => new Option(label, code)));
+    countrySelect.value = defaultCountry(navigator.language) ?? "";
+
+    const label = create("label", "", "Número del chat de destino");
+    label.htmlFor = inputId;
+    const input = create("input", "");
+    input.type = "text";
+    input.id = inputId;
+    input.inputMode = "tel";
+    input.autocomplete = "off";
+    input.placeholder = "612 345 678 o +34 612 345 678";
+    input.setAttribute("aria-describedby", `${previewId} ${errorId}`);
+
+    const preview = create("p", "small");
+    preview.id = previewId;
+    preview.setAttribute("role", "status");
+    const numberError = create("p", "message-error");
+    numberError.id = errorId;
+    numberError.setAttribute("role", "alert");
+
+    const save = create("button", "button-secondary", "Guardar número");
+    save.type = "submit";
+    save.setAttribute("aria-label", `Guardar número de ${name}`);
+    const change = create("button", "button-secondary", "Cambiar");
+    change.type = "button";
+    change.setAttribute("aria-label", `Cambiar número de ${name}`);
+
+    const typed = () => buildNumber(input.value, countries.find(({ code }) => code === countrySelect.value)?.code ?? null);
+
+    function showError(message: string | null): void {
+      showMessage(numberError, message);
+      input.setAttribute("aria-invalid", String(message !== null));
+    }
+
+    function showPreview(): void {
+      const result = typed();
+      if (result.kind === "number") preview.textContent = `Número final: +${result.digits}`;
+      else if (result.kind === "none" && saved !== null) preview.textContent = "Al guardar se quitará el número.";
+      else preview.textContent = "";
+    }
+
+    function setLocked(locked: boolean): void {
+      input.readOnly = locked;
+      for (const node of [countryLabel, countrySelect, preview, save]) node.hidden = locked;
+      change.hidden = !locked;
+      if (locked) input.value = `+${saved}`;
+      showError(null);
+    }
+
+    input.addEventListener("input", () => {
+      showError(null);
+      showPreview();
+    });
+    // The error waits until the user leaves the field: a half-typed number is not a mistake yet.
+    input.addEventListener("change", () => {
+      const result = typed();
+      showError(result.kind === "invalid" ? result.message : null);
+    });
+    countrySelect.addEventListener("change", () => {
+      showError(null);
+      showPreview();
+    });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (input.readOnly) return;
+      const result = typed();
+      if (result.kind === "invalid") {
+        showError(result.message);
+        input.focus();
+        return;
+      }
+      saved = result.kind === "number" ? result.digits : null;
+      set(changeExtension(list, id, { number: saved }));
+      showPreview();
+      setLocked(saved !== null);
+      if (saved !== null) change.focus();
+    });
+    change.addEventListener("click", () => {
+      setLocked(false);
+      showPreview();
+      input.focus();
+    });
+
+    form.append(countryLabel, countrySelect, label, input, preview, numberError, save, change);
+    setLocked(saved !== null);
+    return form;
   }
 
   function render(): void {
@@ -93,17 +178,7 @@ export function createExtensionsSection(): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     const acceptId = target.dataset["accept"];
-    if (acceptId !== undefined) {
-      set(changeExtension(list, acceptId, { accepted: target.checked }));
-      return;
-    }
-    const numberId = target.dataset["number"];
-    if (numberId === undefined) return;
-    const parsed = parseNumber(target.value);
-    const message = target.parentElement?.querySelector<HTMLElement>(`#${target.id}-error`) ?? null;
-    if (message !== null) showMessage(message, parsed.kind === "invalid" ? parsed.message : null);
-    target.setAttribute("aria-invalid", String(parsed.kind === "invalid"));
-    if (parsed.kind !== "invalid") set(changeExtension(list, numberId, { number: parsed.kind === "number" ? parsed.digits : null }));
+    if (acceptId !== undefined) set(changeExtension(list, acceptId, { accepted: target.checked }));
   });
 
   listBox.addEventListener("click", (event) => {

@@ -1488,6 +1488,39 @@ textarea::placeholder {
   outline-offset: 3px;
 }
 
+.crop-zoom {
+  display: flex;
+  flex-direction: column;
+}
+
+.crop-zoom[hidden] {
+  display: none;
+}
+
+.crop-zoom-ends {
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+
+.crop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px -8px;
+}
+
+.crop-actions button {
+  flex: 1 1 auto;
+  justify-content: center;
+  min-height: var(--touch);
+}
+
+.crop-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .crop[aria-disabled="true"] .crop-track {
   opacity: 0.45;
   pointer-events: none;
@@ -2648,11 +2681,6 @@ a {
   color: var(--text-secondary);
 }
 
-#fit-time {
-  min-height: var(--touch);
-  align-self: stretch;
-}
-
 .custom-number {
   display: flex;
   align-items: center;
@@ -2679,8 +2707,26 @@ a {
   border-top: 1px solid var(--border-control);
 }
 
-.extension-card input[type="text"] {
-  width: 12em;
+.extension-number {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 22em;
+}
+
+.extension-number input,
+.extension-number select {
+  width: 100%;
+  min-width: 0;
+}
+
+.extension-number input:read-only {
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.extension-number button {
+  align-self: flex-start;
 }
 
 .custom-number input[aria-invalid="true"] {

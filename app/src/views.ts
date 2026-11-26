@@ -138,6 +138,8 @@ export interface EditorView {
   readonly clipRange: ClipRange | null;
   readonly speed: number;
   readonly fitting: string | null;
+  /** Says that a released drag went back to the original range. */
+  readonly clipNote: string | null;
   readonly priority: PriorityUi;
   readonly fps: number | null;
   readonly framing: FramingSpecUi;
@@ -168,7 +170,10 @@ export interface EditorActions {
   moveStart(seconds: number): void;
   moveEnd(seconds: number): void;
   moveRange(startS: number): void;
-  fitToTime(): void;
+  pickDuration(seconds: number): void;
+  autoFit(): void;
+  /** A pointer drag on a clip bar ended; `before` is the range it started from. */
+  releaseDrag(before: ClipRange, marginS: number): void;
   pickSide(side: number | null): void;
   changeSpeed(speed: number): void;
   fitMax(): void;

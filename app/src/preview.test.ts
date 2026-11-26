@@ -7,6 +7,7 @@ import {
   fromForClipRange,
   type PreviewState,
   secondInPreview,
+  secondInVideo,
 } from "./preview.ts";
 
 test("a video that fits in the window is previewed from the start", () => {
@@ -37,6 +38,11 @@ test("the window does not change while the clip range stays inside", () => {
 test("the video seconds are converted to preview seconds", () => {
   assert.equal(secondInPreview(65, 60), 5);
   assert.equal(secondInPreview(3, 60), 0);
+});
+
+test("an instant of the preview maps back to the video", () => {
+  assert.equal(secondInVideo(5, 60), 65);
+  assert.equal(secondInVideo(0, 0), 0);
 });
 
 function turn(): Promise<void> {

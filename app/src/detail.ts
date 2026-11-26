@@ -188,10 +188,12 @@ export function moveTo(ids: readonly number[], from: number, until: number): num
   return result;
 }
 
-const COMMUNITY_LINK = "https://github.com/Duk3lo/conversor-stickers-community";
+const COMMUNITY_LINK = "https://github.com/Duk3lo/conversor-stickers-comunidad";
 
 export function withdrawnUrl(packId: string): string {
-  return `${COMMUNITY_LINK}/issues/new?template=retirada.yml&title=${encodeURIComponent(`Retirada: ${packId}`)}`;
+  // The query keys are the title and the `pack` field id of the repository's takedown.yml issue form.
+  const query = new URLSearchParams({ template: "takedown.yml", title: `Takedown: ${packId}`, pack: packId });
+  return `${COMMUNITY_LINK}/issues/new?${query}`;
 }
 
 export const CONTRIBUTE_URL = `${COMMUNITY_LINK}/blob/main/CONTRIBUTING.md`;
