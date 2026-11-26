@@ -1,0 +1,12 @@
+{
+  "$schema": "../../gen/schemas/desktop-schema.json",
+  "identifier": "main-github",
+  "description": "github edition only: extensions and link downloads. Not loaded in play.",
+  "windows": ["main"],
+  "permissions": [
+    "allow-add-links",
+    "allow-download-queue",
+    "allow-cancel-downloads",
+    "allow-install-extension"
+  ]
+}

@@ -1,3 +1,4 @@
+import { githubEdition } from "./edition.ts";
 import type { PackUi } from "./contract.ts";
 import { back, type Navigation, type Root, type Section } from "./navigation.ts";
 import { exportableNoReason } from "./packs.ts";
@@ -41,7 +42,7 @@ export interface PlatformControls {
 
 export function controls(platform: Platform): PlatformControls {
   const android = platform === "android";
-  return { links: true, ctrlV: !android, addToWhatsapp: android, ffmpegCredits: android };
+  return { links: githubEdition, ctrlV: !android, addToWhatsapp: android, ffmpegCredits: android };
 }
 
 export const PASTE_HELP = {

@@ -56,6 +56,12 @@ class ShareRequest {
 }
 
 @InvokeArg
+class BotRequest {
+  lateinit var number: String
+  var caption: String? = null
+}
+
+@InvokeArg
 class FolderRequest {
   lateinit var kind: String
 }
@@ -67,6 +73,8 @@ class AndroidBridge(private val activity: Activity) : Plugin(activity) {
   private val pending = Pending()
   /** Package to open once `addResult` says "added"; null if WhatsApp should stay as it is. */
   private var openAfterAdd: String? = null
+  /** The last clip saved to Movies, the one «Enviar al bot» sends. */
+  @Volatile private var lastVideoUri: Uri? = null
   private val downloads by lazy { AndroidDownloads(PythonEngine(activity.applicationContext)) }
 
   /** What was shared and Rust has not collected yet. */
@@ -224,6 +232,7 @@ class AndroidBridge(private val activity: Activity) : Plugin(activity) {
         null,
         null,
       )
+      lastVideoUri = uri
     } catch (e: IOException) {
       resolver.delete(uri, null, null)
       throw e
@@ -367,6 +376,52 @@ class AndroidBridge(private val activity: Activity) : Plugin(activity) {
     try {
       activity.startActivity(launch)
     } catch (_: ActivityNotFoundException) {}
+  }
+
+  /**
+   * Brings WhatsApp to the front, so the user can pick the saved video under Stickers. Tries the
+   * regular app first, then Business. Rejects if neither can be launched.
+   */
+  @Command
+  fun open_whatsapp(invoke: Invoke) {
+    val opened =
+      WhatsappLaunch.firstOpened(WhatsappLaunch.PACKAGES) { pack ->
+        activity.packageManager.getLaunchIntentForPackage(pack)?.let { start(it) } ?: false
+      }
+    if (opened != null) invoke.resolve() else invoke.reject("No se encontró WhatsApp instalado")
+  }
+
+  /**
+   * Shares the last saved clip to the bot's chat in WhatsApp (Business if the regular app is not
+   * there): `jid` opens that chat and the caption carries the settings the bot reads.
+   */
+  @Command
+  fun send_to_bot(invoke: Invoke) {
+    val request = invoke.parseArgs(BotRequest::class.java)
+    val jid = WhatsappLaunch.jid(request.number)
+    if (jid == null) {
+      invoke.reject("número del bot no válido")
+      return
+    }
+    val video = lastVideoUri
+    if (video == null) {
+      invoke.reject("primero guarda el vídeo")
+      return
+    }
+    val sent =
+      WhatsappLaunch.firstOpened(WhatsappLaunch.PACKAGES) { pack ->
+        val send =
+          Intent(Intent.ACTION_SEND)
+            .setType("video/mp4")
+            .setPackage(pack)
+            .putExtra(Intent.EXTRA_STREAM, video)
+            .putExtra("jid", jid)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        request.caption?.let { send.putExtra(Intent.EXTRA_TEXT, it) }
+        send.clipData = ClipData.newRawUri("", video)
+        start(send)
+      }
+    if (sent != null) invoke.resolve() else invoke.reject("No se encontró WhatsApp instalado")
   }
 
   @ActivityCallback

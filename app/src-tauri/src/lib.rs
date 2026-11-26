@@ -4,6 +4,8 @@
 
 mod commands;
 mod commands_community;
+#[cfg(edition = "github")]
+mod commands_extensions;
 mod commands_gifs;
 mod commands_mobile;
 mod commands_packs;
@@ -14,6 +16,8 @@ mod contract_community;
 mod contract_gifs;
 mod direct_link;
 mod environment;
+#[cfg(edition = "github")]
+mod extensions;
 mod external_sticker;
 mod gif_providers;
 mod gifs;
@@ -86,8 +90,11 @@ pub fn run() {
             commands::presets,
             commands::pick_from_gallery,
             commands::paste,
+            #[cfg(edition = "github")]
             commands::add_links,
+            #[cfg(edition = "github")]
             commands::download_queue,
+            #[cfg(edition = "github")]
             commands::cancel_downloads,
             commands::remove_entry,
             commands::preview,
@@ -121,6 +128,8 @@ pub fn run() {
             commands_packs::export_backup,
             commands_packs::restore_backup,
             commands_packs::import_wastickers,
+            #[cfg(edition = "github")]
+            commands_extensions::install_extension,
             commands_community::catalog,
             commands_community::community_detail,
             commands_community::accept_community_notice,
@@ -143,6 +152,9 @@ pub fn run() {
             commands_mobile::send_result_to_whatsapp,
             commands_mobile::send_sticker_to_whatsapp,
             commands_mobile::open_saved_folder,
+            commands_mobile::open_whatsapp,
+            #[cfg(edition = "github")]
+            commands_mobile::send_to_bot,
         ])
         .build(tauri::generate_context!());
     let app = match app {

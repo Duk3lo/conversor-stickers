@@ -4,9 +4,6 @@ const COMMANDS: &[&str] = &[
     "presets",
     "pick_from_gallery",
     "paste",
-    "add_links",
-    "download_queue",
-    "cancel_downloads",
     "remove_entry",
     "preview",
     "timeline_thumbnails",
@@ -61,6 +58,17 @@ const COMMANDS: &[&str] = &[
     "send_result_to_whatsapp",
     "send_sticker_to_whatsapp",
     "open_saved_folder",
+    "open_whatsapp",
+];
+
+// Only in the `github` edition (`cfg(edition = "github")`, set by `main`): extensions and the link
+// downloader. In `play` they are neither declared nor granted.
+const GITHUB_COMMANDS: &[&str] = &[
+    "add_links",
+    "download_queue",
+    "cancel_downloads",
+    "install_extension",
+    "send_to_bot",
 ];
 
 // The KLIPY key is baked in as `BUNDLED_KLIPY_KEY` only if the build sets `KLIPY_KEY` explicitly
@@ -85,9 +93,25 @@ fn bundle_klipy_key() {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     bundle_klipy_key();
-    tauri_build::try_build(
-        tauri_build::Attributes::new()
-            .app_manifest(tauri_build::AppManifest::new().commands(COMMANDS)),
-    )?;
+    // CONVERSOR_EDITION is the single switch (also read by Vite and Gradle): anything but `play`
+    // is the `github` edition.
+    println!("cargo:rerun-if-env-changed=CONVERSOR_EDITION");
+    println!("cargo:rustc-check-cfg=cfg(edition, values(\"github\"))");
+    let github = std::env::var("CONVERSOR_EDITION").as_deref() != Ok("play");
+    if github {
+        println!("cargo:rustc-cfg=edition=\"github\"");
+    }
+    let commands: &'static [&'static str] = if github {
+        [COMMANDS, GITHUB_COMMANDS].concat().leak()
+    } else {
+        COMMANDS
+    };
+    let mut attributes = tauri_build::Attributes::new()
+        .app_manifest(tauri_build::AppManifest::new().commands(commands));
+    if !github {
+        // Without recursion: `capabilities/github/` is not loaded.
+        attributes = attributes.capabilities_path_pattern("./capabilities/*.json");
+    }
+    tauri_build::try_build(attributes)?;
     Ok(())
 }

@@ -58,9 +58,15 @@ pub(crate) enum Origin {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub(crate) enum EntryState {
     Pending,
-    Downloading { bytes: u64, total: Option<u64> },
+    #[cfg_attr(not(edition = "github"), allow(dead_code))]
+    Downloading {
+        bytes: u64,
+        total: Option<u64>,
+    },
     Ready,
-    Error { error: UiError },
+    Error {
+        error: UiError,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -81,6 +87,7 @@ pub(crate) enum MediaUi {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
+#[cfg_attr(not(edition = "github"), allow(dead_code))]
 pub(crate) enum QueueEvent {
     Change { entry: EntryUi },
     Finished,
@@ -631,17 +638,29 @@ mod tests {
         inside
             .lines()
             .map(|line| line.trim().trim_end_matches(','))
-            .filter(|line| !line.is_empty() && !line.starts_with("//"))
+            .filter(|line| !line.is_empty() && !line.starts_with("//") && !line.starts_with("#["))
             .map(|line| line.trim_matches('"'))
             .collect()
     }
 
-    fn declared_commands() -> Vec<&'static str> {
+    fn common_commands() -> Vec<&'static str> {
         list(
             include_str!("../build.rs"),
             "const COMMANDS: &[&str] = &[",
             "];",
         )
+    }
+
+    fn github_commands() -> Vec<&'static str> {
+        list(
+            include_str!("../build.rs"),
+            "const GITHUB_COMMANDS: &[&str] = &[",
+            "];",
+        )
+    }
+
+    fn declared_commands() -> Vec<&'static str> {
+        [common_commands(), github_commands()].concat()
     }
 
     fn is_mobile_command(command: &&str) -> bool {
@@ -655,29 +674,64 @@ mod tests {
             "send_result_to_whatsapp",
             "send_sticker_to_whatsapp",
             "open_saved_folder",
+            "open_whatsapp",
+            "send_to_bot",
         ]
         .contains(command)
     }
 
     #[test]
     fn every_command_is_registered_and_allowed() {
-        let declared = declared_commands();
-        let registered: Vec<_> = list(include_str!("lib.rs"), "generate_handler![", "])")
+        let mut declared = declared_commands();
+        let mut registered: Vec<_> = list(include_str!("lib.rs"), "generate_handler![", "])")
             .into_iter()
             .map(|path| path.rsplit("::").next().unwrap())
             .collect();
+        declared.sort_unstable();
+        registered.sort_unstable();
         assert_eq!(registered, declared);
 
-        let (mobile, desktop): (Vec<_>, Vec<_>) = declared.into_iter().partition(is_mobile_command);
-        assert_eq!(mobile.len(), 9);
+        let permissions = |text: &str| -> Vec<String> {
+            let capability: Value = serde_json::from_str(text).unwrap();
+            serde_json::from_value(capability["permissions"].clone()).unwrap()
+        };
+        let allowed = |commands: Vec<&str>| -> Vec<String> {
+            let mut allowed: Vec<_> = commands
+                .iter()
+                .filter(|command| !is_mobile_command(command))
+                .map(|command| format!("allow-{}", command.replace('_', "-")))
+                .collect();
+            allowed.sort_unstable();
+            allowed
+        };
+        let mut main = permissions(include_str!("../capabilities/main.json"));
+        main.sort_unstable();
+        assert_eq!(main, allowed(common_commands()));
 
-        let capability: Value =
-            serde_json::from_str(include_str!("../capabilities/main.json")).unwrap();
-        let permissions: Vec<_> = desktop
-            .iter()
-            .map(|command| format!("allow-{}", command.replace('_', "-")))
-            .collect();
-        assert_eq!(capability["permissions"], json!(permissions));
+        // `play` loads only the first level of `capabilities/`: these must not leak into it.
+        let github_desktop = permissions(include_str!("../capabilities/github/main.json"));
+        let github_mobile = permissions(include_str!("../capabilities/github/android.json"));
+        assert_eq!(github_mobile, ["allow-send-to-bot"]);
+        let mut github_desktop_sorted = github_desktop;
+        github_desktop_sorted.sort_unstable();
+        assert_eq!(github_desktop_sorted, allowed(github_commands()));
+        let mobile = declared_commands()
+            .into_iter()
+            .filter(is_mobile_command)
+            .count();
+        assert_eq!(mobile, 11);
+    }
+
+    #[test]
+    fn github_commands_are_registered_only_in_the_github_edition() {
+        let lines: Vec<_> = include_str!("lib.rs").lines().map(str::trim).collect();
+        for command in github_commands() {
+            let at = lines
+                .iter()
+                .position(|line| line.ends_with(&format!("::{command},")))
+                .unwrap_or_else(|| panic!("{command} is not registered"));
+            assert_eq!(lines[at - 1], "#[cfg(edition = \"github\")]", "{command}");
+        }
     }
 
     #[test]

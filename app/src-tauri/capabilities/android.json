@@ -16,6 +16,7 @@
     "allow-share-result",
     "allow-send-result-to-whatsapp",
     "allow-send-sticker-to-whatsapp",
-    "allow-open-saved-folder"
+    "allow-open-saved-folder",
+    "allow-open-whatsapp"
   ]
 }

@@ -2671,6 +2671,18 @@ a {
   font: inherit;
 }
 
+.extension-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-control);
+}
+
+.extension-card input[type="text"] {
+  width: 12em;
+}
+
 .custom-number input[aria-invalid="true"] {
   border-color: var(--error);
 }
@@ -2771,4 +2783,26 @@ input:focus-visible {
 
 .button-create[aria-disabled="true"] {
   cursor: progress;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+}
+
+.check-row input {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.edition-badge {
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-size: 0.75rem;
+  font-weight: 700;
 }

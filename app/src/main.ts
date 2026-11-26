@@ -5,8 +5,10 @@ import type { Context } from "./context.ts";
 import type { EntryUi } from "./contract.ts";
 import { asErrorUi } from "./contract.ts";
 import { backAction } from "./mobile.ts";
+import { element } from "./dom.ts";
+import { editionBadge, githubEdition } from "./edition.ts";
 import { platform } from "./platform.ts";
-import { openSavedFolder } from "./contract-mobile.ts";
+import { openSavedFolder, openWhatsapp } from "./contract-mobile.ts";
 import { errorMessage } from "./messages.ts";
 import type { SavedFolder } from "./saved-folder.ts";
 import { back, changeSection, goToRoot, type Navigation, initialNavigation } from "./navigation.ts";
@@ -16,6 +18,7 @@ import { createGifSearchSection } from "./gif-search-section.ts";
 import { createCatalogSection } from "./catalog-section.ts";
 import { createKlipySection } from "./klipy-section.ts";
 import { createBackupSection } from "./backup-section.ts";
+import { createExtensionsSection } from "./extensions-section.ts";
 import { createDetailSection } from "./detail-section.ts";
 import { createFavoritesSection } from "./favorites-section.ts";
 import { createDownloadSection } from "./download-section.ts";
@@ -58,6 +61,9 @@ function startApp(): void {
     },
     openFolder(folder) {
       openSavedFolder(folder).catch((failure: unknown) => context.notify(errorMessage(asErrorUi(failure))));
+    },
+    openWhatsapp() {
+      openWhatsapp().catch((failure: unknown) => context.notify(errorMessage(asErrorUi(failure))));
     },
     entry: (id) => entries.get(id),
     remember: (entry) => void entries.set(entry.id, entry),
@@ -109,6 +115,14 @@ function startApp(): void {
     catalog: catalog.catalog,
   });
   createBackupSection({ api: apiReal, setLibrary: stickers.setLibrary });
+  const badge = editionBadge(import.meta.env?.VITE_EDITION);
+  if (badge !== null) {
+    const label = element("edition-badge");
+    label.textContent = badge;
+    label.hidden = false;
+  }
+  if (githubEdition) createExtensionsSection();
+  else element("section-extensions").remove();
   catalog.onChange(detail.onCatalogChange);
   catalog.onChange(favorites.onCatalogChange);
   createDownloadSection(context, editor.creating);

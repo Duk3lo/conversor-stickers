@@ -409,3 +409,20 @@ export function exportBackup(): Promise<string | null> {
 export function restoreBackup(): Promise<LibraryUi | null> {
   return call("restore_backup");
 }
+
+/** An installed extension, as Rust validated it from its manifest. */
+export interface ExtensionUi {
+  id: string;
+  name: string;
+  description: string;
+  notice: string;
+  url: string;
+  /** Whether the caption carries `sonido=<seconds>`. */
+  sound: boolean;
+  max_sound_s: number | null;
+}
+
+/** Asks for a manifest file and answers it validated; `null` if the user cancels. */
+export function installExtension(): Promise<ExtensionUi | null> {
+  return call("install_extension");
+}

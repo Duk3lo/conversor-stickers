@@ -300,6 +300,7 @@ pub(crate) async fn receive_shared(
                 .for_each(|entry| crate::commands::allow_image(&app, entry));
             entries.extend(new_ones);
         }
+        #[cfg(edition = "github")]
         if !shared.links.is_empty() {
             entries.extend(session.add_links(&shared.links.join("\n"))?);
         }
@@ -375,6 +376,29 @@ pub(crate) async fn open_saved_folder(kind: String, app: AppHandle) -> Result<()
     require_android()?;
     let kind = mobile::saved_folder_kind(&kind)?;
     in_background(move || mobile::open_saved_folder(&app, kind)).await
+}
+
+/// Brings WhatsApp to the front after a clip was saved as a video.
+#[tauri::command]
+pub(crate) async fn open_whatsapp(app: AppHandle) -> Result<(), UiError> {
+    require_android()?;
+    in_background(move || mobile::open_whatsapp(&app)).await
+}
+
+/// Shares the saved clip to the bot's WhatsApp chat, with the settings caption the bot reads.
+#[cfg(edition = "github")]
+#[tauri::command]
+pub(crate) async fn send_to_bot(
+    number: String,
+    caption: Option<String>,
+    app: AppHandle,
+) -> Result<(), UiError> {
+    require_android()?;
+    mobile::bot_number(&number)?;
+    if let Some(caption) = caption.as_deref() {
+        mobile::bot_caption(caption)?;
+    }
+    in_background(move || mobile::send_to_bot(&app, &number, caption.as_deref())).await
 }
 
 #[tauri::command]

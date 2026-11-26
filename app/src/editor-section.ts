@@ -8,6 +8,7 @@ import { sentToWhatsappNotice } from "./share.ts";
 import { createEstimator, durationFix, reasonForCreateNo, requestOfEditor, fittingText } from "./editor.ts";
 import { easyReset, easyStep, easySummary, loadMode, RESET_NOTE, saveMode, type EditorMode } from "./easy.ts";
 import { planFit, fitPlanText } from "./fit.ts";
+import { extensionCaption, loadExtensions } from "./extensions.ts";
 import { localStore } from "./store.ts";
 import { fitPriority, fpsAllowed } from "./fps.ts";
 import { DEFAULT_FRAMING } from "./framing.ts";
@@ -298,6 +299,7 @@ export function createEditorSection(
       creation: { kind: "inactive" },
       sound: initialSound(media, entry.origin),
       clipVideo: { kind: "idle" },
+      extensions: loadExtensions(store),
       packs: { open: null, compatible: [] },
     };
     update({});
@@ -470,6 +472,18 @@ export function createEditorSection(
     }
   }
 
+  async function sendToExtension(id: string): Promise<void> {
+    const target = view?.extensions.find((installed) => installed.extension.id === id);
+    if (view === null || view.clipRange === null || view.clipVideo.kind !== "saved" || target?.number == null) return;
+    const soundS = view.clipRange.end - view.clipRange.start;
+    try {
+      // The saved clip is already cut to the chosen range, so only the sound length goes in the caption.
+      await mobileCommands.sendToBot(target.number, extensionCaption(target.extension, soundS));
+    } catch (failure) {
+      context.notify(errorMessage(asErrorUi(failure)));
+    }
+  }
+
   async function share(): Promise<void> {
     const current = view?.creation;
     if (view === null || current?.kind !== "done" || current.saving) return;
@@ -586,6 +600,8 @@ export function createEditorSection(
     saveSound: () => void saveSound(),
     saveClipVideo: () => void saveClipVideo(),
     openFolder: (folder) => context.openFolder(folder),
+    openWhatsapp: () => context.openWhatsapp(),
+    sendToExtension: (id) => void sendToExtension(id),
     share: () => void share(),
     sendToWhatsapp: () => void sendToWhatsapp(),
     addPack: (id) => void addPack(id),

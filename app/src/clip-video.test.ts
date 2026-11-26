@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { canSaveClipVideo, clipVideoText } from "./clip-video.ts";
+import { canSaveClipVideo, clipVideoText, openWhatsappVisible } from "./clip-video.ts";
 import type { MediaUi } from "./contract.ts";
 
 const video: MediaUi = { kind: "video", duration_s: 8, width: 640, height: 360, has_audio: true };
@@ -22,4 +22,13 @@ test("the text tells what to do in WhatsApp, or why it failed", () => {
     "Vídeo guardado. En WhatsApp: Stickers → Crear sticker → elige este vídeo. Si tu WhatsApp ya tiene stickers con sonido, lo incluirá.",
   );
   assert.equal(clipVideoText({ kind: "failed", message: "HTTP 403" }), "HTTP 403");
+});
+
+test("«Abrir WhatsApp» shows only after a saved clip, on Android", () => {
+  const saved = { kind: "saved", name: "a-sticker.mp4" } as const;
+  assert.equal(openWhatsappVisible("android", saved), true);
+  assert.equal(openWhatsappVisible("desktop", saved), false);
+  assert.equal(openWhatsappVisible("android", { kind: "idle" }), false);
+  assert.equal(openWhatsappVisible("android", { kind: "saving" }), false);
+  assert.equal(openWhatsappVisible("android", { kind: "failed", message: "HTTP 403" }), false);
 });

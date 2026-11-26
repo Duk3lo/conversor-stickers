@@ -28,6 +28,8 @@ use crate::contract::{
 use crate::mobile::{self, Executables};
 use crate::storage::write_atomic;
 
+// Link downloader (yt-dlp): its entry points exist only in the github edition.
+#[cfg_attr(not(edition = "github"), allow(dead_code))]
 mod downloads;
 #[cfg(test)]
 mod end_to_end;
@@ -103,6 +105,7 @@ struct Entry {
     name_base: String,
     origin: Origin,
     state: EntryState,
+    #[cfg_attr(not(edition = "github"), allow(dead_code))]
     link: Option<Link>,
     /// Where it came from, kept after the download starts so "save video" can download it again
     /// with audio.
