@@ -2282,6 +2282,24 @@ input[type="range"] {
     column-gap: 12px;
   }
 
+  .app {
+    position: relative;
+  }
+
+  /* The icon shares the line of the section title instead of taking its own row. */
+  .header {
+    position: absolute;
+    top: 20px;
+    right: max(16px, env(safe-area-inset-right));
+    padding: 0;
+  }
+
+  .panel > h2:first-child,
+  .panel > .stack > h2:first-child,
+  .panel > .stack > .title-row:first-child {
+    padding-right: 44px;
+  }
+
   .header h1,
   .bar-destination-text {
     display: none;
@@ -2950,4 +2968,15 @@ input:focus-visible {
 /* Two fingers on the video pinch the crop instead of zooming or scrolling the page. */
 [data-framing="crop"] {
   touch-action: none;
+}
+
+/* In a carousel a single pack card fills the width instead of leaving half of it empty. */
+@media (max-width: 560px) {
+  .lane-list > li:only-child {
+    flex: 1 1 auto;
+  }
+
+  .lane-list > li:only-child .card {
+    width: 100%;
+  }
 }
