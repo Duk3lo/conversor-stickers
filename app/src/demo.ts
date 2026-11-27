@@ -284,6 +284,8 @@ export async function startDemo(initial: string | null): Promise<void> {
 
   const createdGifs: GifsView = {
     choosing: false,
+    choosingImages: false,
+    images: null,
     error: null,
     created: [
       { entry: 1, name: "gato-saltando.mp4", destination: "GIF para Discord", sizeBytes: 4_310_000, image: paths[0] ?? "", saving: false, saved: "gato-saltando.gif", saveError: null },
@@ -598,7 +600,15 @@ export async function startDemo(initial: string | null): Promise<void> {
     sendToWhatsapp: register("enviar a WhatsApp"),
     addPack: register("añadir al paquete"),
   });
-  const gifs = createGifsView({ pickVideo: register("elegir video"), save: register("guardar gif") });
+  const gifs = createGifsView({
+    pickVideo: register("elegir video"),
+    pickImages: register("elegir imágenes"),
+    setImageSeconds: register("duración de cada imagen"),
+    setRepeat: register("repetir siempre"),
+    createFromImages: register("crear GIF"),
+    discardImages: register("descartar imágenes"),
+    save: register("guardar gif"),
+  });
   const download = createDownloadView({
     addLinks: async (text) => {
       console.info("demo: añadir enlaces", text);
@@ -618,7 +628,7 @@ export async function startDemo(initial: string | null): Promise<void> {
   function repaint(): void {
     const state = current;
     stickers.render({ ...stickersBase, library: { kind: "ready", value: demo.library() }, ...state.stickers, openedPack: liveNav.openedPack });
-    gifs.render({ choosing: false, error: null, created: [], ...state.gifs });
+    gifs.render({ choosing: false, choosingImages: false, images: null, error: null, created: [], ...state.gifs });
     download.render({ queue: emptyQueue(), sendingLinks: false, linksError: null, queueError: null, pasted: { kind: "inactive" }, saving: null, ...state.download });
     editor.render(liveNav.editor === null ? null : { ...editorVideo, ...state.editor });
     shell.render({ nav: liveNav, notice, noticeFolder });

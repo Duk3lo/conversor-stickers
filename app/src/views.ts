@@ -215,14 +215,28 @@ export interface CreatedGif {
   readonly saveError: string | null;
 }
 
+export interface ChosenImages {
+  readonly ids: readonly number[];
+  readonly imageSeconds: number;
+  readonly repeat: boolean;
+  readonly creating: boolean;
+}
+
 export interface GifsView {
   readonly choosing: boolean;
+  readonly choosingImages: boolean;
+  readonly images: ChosenImages | null;
   readonly error: string | null;
   readonly created: readonly CreatedGif[];
 }
 
 export interface GifsActions {
   pickVideo(): void;
+  pickImages(): void;
+  setImageSeconds(seconds: number): void;
+  setRepeat(repeat: boolean): void;
+  createFromImages(): void;
+  discardImages(): void;
   save(entry: number): void;
 }
 

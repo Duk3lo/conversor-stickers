@@ -92,6 +92,12 @@ export interface StaticRequest {
   framing: FramingSpecUi;
 }
 
+export interface ImagesGifRequest {
+  ids: number[];
+  image_s: number;
+  repeat: boolean;
+}
+
 export interface EstimateUi {
   estimated_size_bytes: number;
   max_size_bytes: number;
@@ -333,6 +339,11 @@ export function estimate(request: CreateRequest): Promise<EstimateUi> {
 
 export function createStatic(request: StaticRequest): Promise<CreateResult> {
   return call("create_static", { request });
+}
+
+/** Returns the size of the GIF; its bytes are read with `result(ids[0])`. */
+export function createImagesGif(request: ImagesGifRequest): Promise<number> {
+  return call("create_images_gif", { request });
 }
 
 export function result(id: number): Promise<ArrayBuffer> {

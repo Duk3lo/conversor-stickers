@@ -12,8 +12,8 @@ use tracing::warn;
 #[cfg(edition = "github")]
 use crate::contract::QueueEvent;
 use crate::contract::{
-    CreateRequest, CreateResult, EntryUi, EstimateUi, MediaKind, MediaUi, PresetUi, ProgressUi,
-    StaticRequest, UiError, UiErrorKind,
+    CreateRequest, CreateResult, EntryUi, EstimateUi, ImagesGifRequest, MediaKind, MediaUi,
+    PresetUi, ProgressUi, StaticRequest, UiError, UiErrorKind,
 };
 use crate::mobile;
 use crate::session::{self, PASTE_LIMIT_BYTES, Session};
@@ -352,6 +352,20 @@ pub(crate) async fn create_static(
     in_background(move || {
         prepare_executables(&app, &session)?;
         session.create_static(&request)
+    })
+    .await
+}
+
+#[tauri::command]
+pub(crate) async fn create_images_gif(
+    request: ImagesGifRequest,
+    app: AppHandle,
+    session: State<'_, Arc<Session>>,
+) -> Result<u64, UiError> {
+    let session = Arc::clone(&session);
+    in_background(move || {
+        prepare_executables(&app, &session)?;
+        session.create_images_gif(&request)
     })
     .await
 }

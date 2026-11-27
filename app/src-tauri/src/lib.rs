@@ -127,6 +127,7 @@ pub fn run() {
             commands::cancel_creation,
             commands::estimate,
             commands::create_static,
+            commands::create_images_gif,
             commands::result,
             commands::save,
             commands_video::save_video,

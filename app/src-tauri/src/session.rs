@@ -10,11 +10,11 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::Duration;
 
 use conversor_core::{
-    Align, Background, Canvas, ConversionError, ConversionOptions, ConversionParams, Decoder as _,
-    DecodingError, DownloadedVideo, Fps, FramingMode, FramingSpec, ImageInfo, Link, OptionsError,
-    PRESETS, Preset, Priority, Progress, Shape, Speed, TimePlan, Tracking, VideoInfo,
-    WHATSAPP_STATIC_STICKER, YtDlpDownloader, convert, convert_image, decimal, decimal_1,
-    find_preset, plan_time, readable_size,
+    Align, Background, Canvas, ConversionError, ConversionOptions, ConversionParams,
+    DEFAULT_GIF_SIDE, Decoder as _, DecodingError, DownloadedVideo, Fps, FramingMode, FramingSpec,
+    ImageInfo, ImagesGifError, Link, OptionsError, PRESETS, Preset, Priority, Progress, Shape,
+    Speed, TimePlan, Tracking, VideoInfo, WHATSAPP_STATIC_STICKER, YtDlpDownloader, convert,
+    convert_image, decimal, decimal_1, encode_images_gif, find_preset, plan_time, readable_size,
 };
 
 use tempfile::TempDir;
@@ -22,8 +22,9 @@ use tracing::warn;
 
 use crate::contract::{
     AlignUi, BackgroundUi, CreateRequest, CreateResult, EntryState, EntryUi, EstimateUi,
-    FpsRangeUi, FramingModeUi, FramingSpecUi, MediaKind, MediaOrigin, MediaUi, Origin, PresetUi,
-    PriorityUi, ProgressUi, ShapeUi, SideRangeUi, StaticRequest, UiError, UiErrorKind,
+    FpsRangeUi, FramingModeUi, FramingSpecUi, ImagesGifRequest, MediaKind, MediaOrigin, MediaUi,
+    Origin, PresetUi, PriorityUi, ProgressUi, ShapeUi, SideRangeUi, StaticRequest, UiError,
+    UiErrorKind,
 };
 use crate::mobile::{self, Executables};
 use crate::storage::write_atomic;
@@ -720,6 +721,65 @@ impl Session {
         Ok(result)
     }
 
+    /// Makes a GIF from the image entries, in the order given, and keeps it as the result of the
+    /// first one. Returns its size in bytes.
+    pub(crate) fn create_images_gif(&self, request: &ImagesGifRequest) -> Result<u64, UiError> {
+        let invalid = |message: &str| UiError::new(UiErrorKind::InvalidOptions, message);
+        if !request.image_s.is_finite() {
+            return Err(invalid("la duración de cada imagen no es un número válido"));
+        }
+        let image_ms = (request.image_s * 1000.0).round() as u32;
+        let paths = {
+            let state = self.state();
+            request
+                .ids
+                .iter()
+                .map(|&id| {
+                    let entry = state.entry(id)?;
+                    entry
+                        .image
+                        .as_ref()
+                        .map(|image| image.path.clone())
+                        .ok_or_else(|| {
+                            UiError::new(
+                                UiErrorKind::InvalidEntry,
+                                format!("«{}» no es una imagen lista para convertir", entry.name),
+                            )
+                        })
+                })
+                .collect::<Result<Vec<_>, _>>()?
+        };
+        let first = *request
+            .ids
+            .first()
+            .ok_or_else(|| invalid("elige al menos una imagen"))?;
+        self.reserve_conversion(first, |_| Ok(()))?;
+        let _conversion_end = ConversionEnd(self);
+
+        let executables = self.executables();
+        let bytes = encode_images_gif(
+            paths.len(),
+            |index| {
+                executables
+                    .decoder(&paths[index])
+                    .decode_image(&self.creation_cancellation)
+            },
+            image_ms,
+            request.repeat,
+            DEFAULT_GIF_SIDE,
+        )
+        .map_err(UiError::from)?;
+        if self.creation_cancellation.load(Ordering::Relaxed) {
+            return Err(UiError::from(ConversionError::Cancelled));
+        }
+        let size = bytes.len() as u64;
+        self.state().entry_mut(first)?.created = Some(Created {
+            bytes,
+            extension: "gif",
+        });
+        Ok(size)
+    }
+
     pub(crate) fn result(&self, id: u32) -> Result<Vec<u8>, UiError> {
         let state = self.state();
         Ok(created(state.entry(id)?)?.bytes.clone())
@@ -1041,6 +1101,18 @@ fn does_not_fit_notice(
     )
 }
 
+impl From<ImagesGifError> for UiError {
+    fn from(error: ImagesGifError) -> Self {
+        match error {
+            ImagesGifError::Decoding(error) => UiError::from(ConversionError::from(error)),
+            ImagesGifError::Scaling(_) | ImagesGifError::Encoding(_) => {
+                UiError::new(UiErrorKind::Other, error.to_string())
+            }
+            _ => UiError::new(UiErrorKind::InvalidOptions, error.to_string()),
+        }
+    }
+}
+
 impl From<ConversionError> for UiError {
     fn from(error: ConversionError) -> Self {
         let kind = match &error {
@@ -1352,6 +1424,79 @@ mod tests {
             assert_eq!(sticker.kind, conversor_core::StickerKind::Static);
             assert_eq!(session.proposal_saved(id).unwrap().name, "foto.webp");
         }
+    }
+
+    fn images_gif_request(ids: Vec<u32>, image_s: f64) -> ImagesGifRequest {
+        ImagesGifRequest {
+            ids,
+            image_s,
+            repeat: true,
+        }
+    }
+
+    #[test]
+    fn images_gif_keeps_the_order_the_size_of_the_first_and_is_saved_as_gif() {
+        let directory = tempfile::tempdir().unwrap();
+        let session = Session::default();
+        let entries = session.add_images(vec![
+            generate_image(directory.path(), "a.png", 300, 200),
+            generate_image(directory.path(), "b.png", 100, 100),
+            generate_image(directory.path(), "c.png", 640, 480),
+        ]);
+        let ids: Vec<u32> = entries.iter().map(|entry| entry.id).collect();
+
+        let size = session
+            .create_images_gif(&images_gif_request(vec![ids[2], ids[0], ids[1]], 0.5))
+            .unwrap();
+
+        let bytes = session.result(ids[2]).unwrap();
+        assert_eq!(size, bytes.len() as u64);
+        assert_eq!(&bytes[..3], b"GIF");
+        // 640x480 is the first one: the canvas is its size, limited to 512 on the longest side.
+        assert_eq!(u16::from_le_bytes([bytes[6], bytes[7]]), 512);
+        assert_eq!(u16::from_le_bytes([bytes[8], bytes[9]]), 384);
+        assert_eq!(session.proposal_saved(ids[2]).unwrap().name, "c.gif");
+        // Each frame starts with a graphic control extension: 0x21 0xF9 0x04, flags, delay (cs).
+        let delays: Vec<u16> = bytes
+            .windows(8)
+            .filter(|window| window[..3] == [0x21, 0xF9, 0x04])
+            .map(|window| u16::from_le_bytes([window[4], window[5]]))
+            .collect();
+        assert_eq!(delays, [50, 50, 50]);
+    }
+
+    #[test]
+    fn images_gif_rejects_what_does_not_come_clean_over_ipc() {
+        let directory = tempfile::tempdir().unwrap();
+        let (session, image) = session_with_image(directory.path());
+        let (video_session, video) = session_with_video(directory.path(), 1.0);
+        let kind = |result: Result<u64, UiError>| result.unwrap_err().kind;
+
+        assert_eq!(
+            kind(session.create_images_gif(&images_gif_request(vec![], 0.5))),
+            UiErrorKind::InvalidOptions
+        );
+        assert_eq!(
+            kind(session.create_images_gif(&images_gif_request(vec![image; 51], 0.5))),
+            UiErrorKind::InvalidOptions
+        );
+        for seconds in [0.0, 0.05, 5.1, f64::NAN, f64::INFINITY, -1.0] {
+            assert_eq!(
+                kind(session.create_images_gif(&images_gif_request(vec![image], seconds))),
+                UiErrorKind::InvalidOptions,
+                "{seconds}"
+            );
+        }
+        assert_eq!(
+            kind(session.create_images_gif(&images_gif_request(vec![image, 99], 0.5))),
+            UiErrorKind::InvalidEntry
+        );
+        assert_eq!(
+            kind(video_session.create_images_gif(&images_gif_request(vec![video], 0.5))),
+            UiErrorKind::InvalidEntry
+        );
+        // Nothing was created by the failed attempts.
+        assert!(session.result(image).is_err());
     }
 
     #[test]

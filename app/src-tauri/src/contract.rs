@@ -211,6 +211,15 @@ pub(crate) struct StaticRequest {
     pub(crate) framing: FramingSpecUi,
 }
 
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) struct ImagesGifRequest {
+    /// Image entries in the order they become frames.
+    pub(crate) ids: Vec<u32>,
+    pub(crate) image_s: f64,
+    pub(crate) repeat: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct EstimateUi {
@@ -862,6 +871,23 @@ mod tests {
     fn origins() {
         let origins = [Origin::File, Origin::Link, Origin::Pasted];
         assert_eq!(serde_json::to_value(origins).unwrap(), example("origins"));
+    }
+
+    #[test]
+    fn images_gif_request_has_those_fields_and_no_more() {
+        let request: ImagesGifRequest =
+            serde_json::from_value(example("images_gif_request")).unwrap();
+        assert_eq!(
+            request,
+            ImagesGifRequest {
+                ids: vec![3, 1, 2],
+                image_s: 0.5,
+                repeat: true,
+            }
+        );
+        let mut extra = example("images_gif_request");
+        extra["side"] = json!(100);
+        assert!(serde_json::from_value::<ImagesGifRequest>(extra).is_err());
     }
 
     #[test]

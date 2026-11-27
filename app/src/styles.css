@@ -927,6 +927,25 @@ textarea::placeholder {
   background: var(--surface);
 }
 
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+}
+
+.bgif-settings input[type="range"] {
+  width: 100%;
+  min-height: 44px;
+}
+
 .bgif-settings .field {
   align-self: stretch;
 }

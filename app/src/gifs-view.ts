@@ -1,16 +1,36 @@
 import { sizeText } from "./queue.ts";
 import { pressedButton, create, element, icon, showMessage } from "./dom.ts";
+import { imageSecondsText, imagesChosenText } from "./images-gif.ts";
 import type { GifsActions, CreatedGif, GifsView } from "./views.ts";
 
 export function createGifsView(actions: GifsActions): { render(view: GifsView): void } {
   const videoButton = element<HTMLButtonElement>("gif-video");
   const videoTitle = element<HTMLSpanElement>("gif-video-title");
+  const imagesButton = element<HTMLButtonElement>("gif-images");
+  const imagesTitle = element<HTMLSpanElement>("gif-images-title");
+  const form = element<HTMLFormElement>("gif-images-form");
+  const count = element<HTMLParagraphElement>("gif-images-count");
+  const timeField = element<HTMLDivElement>("gif-images-time-field");
+  const time = element<HTMLInputElement>("gif-images-time");
+  const timeText = element<HTMLOutputElement>("gif-images-time-text");
+  const repeatField = element<HTMLLabelElement>("gif-images-repeat-field");
+  const repeat = element<HTMLInputElement>("gif-images-repeat");
+  const createButton = element<HTMLButtonElement>("gif-images-create");
+  const discardButton = element<HTMLButtonElement>("gif-images-discard");
   const error = element<HTMLDivElement>("gifs-error");
   const errorText = element<HTMLParagraphElement>("gifs-error-text");
   const empty = element<HTMLParagraphElement>("gifs-empty");
   const list = element<HTMLUListElement>("list-gifs");
 
   videoButton.addEventListener("click", () => actions.pickVideo());
+  imagesButton.addEventListener("click", () => actions.pickImages());
+  time.addEventListener("input", () => actions.setImageSeconds(Number(time.value)));
+  repeat.addEventListener("change", () => actions.setRepeat(repeat.checked));
+  discardButton.addEventListener("click", () => actions.discardImages());
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    actions.createFromImages();
+  });
   list.addEventListener("click", (event) => {
     const button = pressedButton(event);
     const row = button?.closest<HTMLLIElement>("li[data-entry]");
@@ -50,9 +70,29 @@ export function createGifsView(actions: GifsActions): { render(view: GifsView): 
 
   return {
     render(view) {
-      videoButton.disabled = view.choosing;
+      const busy = view.choosing || view.choosingImages || view.images?.creating === true;
+      videoButton.disabled = busy;
       videoButton.setAttribute("aria-busy", String(view.choosing));
-      videoTitle.textContent = view.choosing ? "Eligiendo un video…" : "Video";
+      videoTitle.textContent = view.choosing ? "Eligiendo un video…" : "Desde un video";
+      imagesButton.disabled = busy;
+      imagesButton.setAttribute("aria-busy", String(view.choosingImages));
+      imagesTitle.textContent = view.choosingImages ? "Eligiendo imágenes…" : "Desde imágenes";
+      const images = view.images;
+      form.hidden = images === null;
+      if (images !== null) {
+        const several = images.ids.length > 1;
+        count.textContent = imagesChosenText(images.ids.length);
+        timeField.hidden = !several;
+        repeatField.hidden = !several;
+        time.value = String(images.imageSeconds);
+        timeText.textContent = imageSecondsText(images.imageSeconds);
+        repeat.checked = images.repeat;
+        time.disabled = images.creating;
+        repeat.disabled = images.creating;
+        createButton.disabled = images.creating;
+        createButton.textContent = images.creating ? "Creando…" : "Crear GIF";
+        discardButton.disabled = images.creating;
+      }
       showMessage(errorText, view.error);
       error.hidden = view.error === null;
       empty.hidden = view.created.length > 0;

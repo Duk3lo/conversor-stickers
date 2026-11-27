@@ -16,6 +16,7 @@
     "allow-cancel-creation",
     "allow-estimate",
     "allow-create-static",
+    "allow-create-images-gif",
     "allow-result",
     "allow-save",
     "allow-save-video",

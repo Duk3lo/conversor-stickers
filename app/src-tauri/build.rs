@@ -13,6 +13,7 @@ const COMMANDS: &[&str] = &[
     "cancel_creation",
     "estimate",
     "create_static",
+    "create_images_gif",
     "result",
     "save",
     "save_video",
