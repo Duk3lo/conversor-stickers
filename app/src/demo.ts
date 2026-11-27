@@ -191,6 +191,7 @@ export async function startDemo(initial: string | null): Promise<void> {
     framing: DEFAULT_FRAMING,
     sidePx: null,
     thumbnails: demoThumbnails,
+    still: photo,
     fitPending: false,
     mode: "advanced",
     preparing: false,

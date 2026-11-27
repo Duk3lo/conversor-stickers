@@ -1325,6 +1325,25 @@ textarea::placeholder {
   display: none;
 }
 
+.preview[data-media="video"][data-still="true"] video {
+  display: none;
+}
+
+.preview[data-media="video"][data-still="true"][data-state="ready"] img {
+  display: block;
+}
+
+/* Same dimming as the box-shadow over a <video> (55 % black), done without the huge shadow. */
+.preview[data-dim="true"] img {
+  filter: brightness(0.45);
+}
+
+.preview[data-dim="true"] .framing-square {
+  box-shadow: none;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+}
+
 .preview[data-media="image"] {
   background: var(--board);
 }

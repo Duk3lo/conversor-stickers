@@ -62,6 +62,7 @@ import { playableNoVideoReason, previewMode } from "./mobile.ts";
 import { platform } from "./platform.ts";
 import { canSendToWhatsapp, canShareResult } from "./share.ts";
 import { secondInPreview, secondInVideo } from "./preview.ts";
+import { usesSoftwareRendering } from "./software-rendering.ts";
 import { resultDetail, progressFraction, resultSizeText, progressText } from "./progress.ts";
 import {
   barScope,
@@ -124,6 +125,9 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   const playWholeButton = element<HTMLButtonElement>("play-whole");
   const startHereButton = element<HTMLButtonElement>("start-here");
   const playbackNote = element<HTMLParagraphElement>("playback-note");
+  const playbackButtons = element<HTMLDivElement>("playback-buttons");
+  // Showing a <video> blackens the whole window on software GL, so a still of the clip stands in.
+  const stillOnly = usesSoftwareRendering();
   const fpsCustom = element<HTMLInputElement>("fps-custom");
   const fpsError = element<HTMLParagraphElement>("fps-error");
   const sideBox = element<HTMLFieldSetElement>("side-box");
@@ -673,7 +677,23 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     }
   }
 
+  function renderStill(v: EditorView): void {
+    if (v.still === null) {
+      image.removeAttribute("src");
+      preview.dataset.state = "loading";
+      previewMessage.textContent = "Preparando la vista previa…";
+      return;
+    }
+    if (image.getAttribute("src") !== v.still) image.src = v.still;
+    image.alt = "Imagen fija del inicio del tramo";
+    preview.dataset.state = "ready";
+  }
+
   function renderVideo(v: EditorView): void {
+    if (stillOnly) {
+      renderStill(v);
+      return;
+    }
     video.defaultPlaybackRate = v.speed;
     video.playbackRate = v.speed;
     const url = v.preview.kind === "ready" ? v.preview.url : null;
@@ -753,12 +773,22 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     previewContent.style.borderRadius = crop ? "0" : radius;
     square.style.borderRadius = crop ? radius : "0";
     square.hidden = !crop || resultOnly;
+    // A huge box-shadow may not be painted on software GL, so the still itself is dimmed and the
+    // square redraws the same image at full brightness, aligned with the frame.
+    const dimmed = stillOnly && v.still !== null && crop && !resultOnly;
+    preview.dataset.dim = String(dimmed);
+    square.style.backgroundImage = dimmed ? `url("${v.still}")` : "";
     if (crop) {
       const box = cropSquare(v.framing, size.width, size.height);
       square.style.left = `${box.left * 100}%`;
       square.style.top = `${box.top * 100}%`;
       square.style.width = `${box.width * 100}%`;
       square.style.height = `${box.height * 100}%`;
+      if (dimmed) {
+        square.style.backgroundSize = `${100 / box.width}% ${100 / box.height}%`;
+        const free = (side: number) => (side >= 1 ? 0 : 100 / (1 - side));
+        square.style.backgroundPosition = `${box.left * free(box.width)}% ${box.top * free(box.height)}%`;
+      }
     }
     for (const entry of framingControls.querySelectorAll<HTMLInputElement>("input[type=radio]")) {
       const current: Record<string, string> = {
@@ -863,6 +893,11 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   }
 
   function renderPlayback(v: EditorView): void {
+    playbackButtons.hidden = stillOnly;
+    if (stillOnly) {
+      showMessage(playbackNote, "Vista previa sin movimiento: este dispositivo no puede mostrar el video");
+      return;
+    }
     const playable = currentUrl !== null && !failedPreview && v.clipRange !== null;
     playWholeButton.disabled = !playable;
     playWholeButton.textContent = playingWhole ? "Repetir el tramo" : "Reproducir todo el video";
@@ -1194,6 +1229,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
       editorTitle.textContent = title(fresh);
       file.textContent = fresh.entry.name;
       preview.dataset.media = fresh.entry.media.kind;
+      preview.dataset.still = String(stillOnly && esVideo);
       videoControls.hidden = !esVideo;
       renderDestinations(fresh);
       const reason = esVideo ? reasonForCreateNo(fresh) : null;

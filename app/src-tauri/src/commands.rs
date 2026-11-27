@@ -239,6 +239,32 @@ pub(crate) async fn preview(
         .map(Response::new)
 }
 
+/// Path of one frame of the video at `at_s`, with its own aspect ratio. Allowed in the asset scope
+/// file by file, like the thumbnails.
+#[tauri::command]
+pub(crate) async fn video_still(
+    id: u32,
+    at_s: f64,
+    app: AppHandle,
+    session: State<'_, Arc<Session>>,
+) -> Result<String, UiError> {
+    let session = Arc::clone(&session);
+    in_background(move || {
+        prepare_executables(&app, &session)?;
+        let path = session.video_still(id, at_s)?;
+        app.asset_protocol_scope()
+            .allow_file(&path)
+            .map_err(|error| {
+                UiError::new(
+                    UiErrorKind::Other,
+                    format!("no se pudo permitir ver la imagen: {error}"),
+                )
+            })?;
+        Ok(path.to_string_lossy().into_owned())
+    })
+    .await
+}
+
 /// Paths of small frames spread over the whole video. Each file is allowed in the asset scope
 /// one by one, so nothing else of the temp directory becomes visible.
 #[tauri::command]

@@ -148,6 +148,8 @@ export interface EditorView {
   readonly sidePx: number | null;
   /** Small frames spread over the whole video, for the clip bar. */
   readonly thumbnails: readonly string[];
+  /** Whole frame at the start of the clip, in the video's proportion; only without video playback. */
+  readonly still: string | null;
   readonly fitPending: boolean;
   readonly mode: EditorMode;
   /** «Crear sticker» of the easy mode is adjusting and about to create. */

@@ -7,6 +7,7 @@ const COMMANDS: &[&str] = &[
     "remove_entry",
     "preview",
     "timeline_thumbnails",
+    "video_still",
     "cancel_preview",
     "create",
     "cancel_creation",

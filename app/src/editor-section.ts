@@ -34,6 +34,8 @@ import {
   clipRangeByDefault,
 } from "./crop.ts";
 import { RESTORED_NOTE, editorRecommendedS, fitToTime, moveRange, snapToOriginal } from "./clipbar.ts";
+import { usesSoftwareRendering } from "./software-rendering.ts";
+import { createStillFollower } from "./still-follow.ts";
 import { platform } from "./platform.ts";
 import { MAX_SOUND_S, initialSound, soundRequest } from "./sound.ts";
 import { createEditorView } from "./editor-view.ts";
@@ -42,6 +44,7 @@ import type { Creation, EditorView } from "./views.ts";
 const IMAGE_KINDS: Record<string, string> = { webp: "image/webp", gif: "image/gif", png: "image/png" };
 const PRESET_STICKER = "whatsapp-sticker";
 const THUMBNAILS = 10;
+const STILL_DEBOUNCE_MS = 250;
 
 export interface ReadyGif {
   entry: number;
@@ -81,6 +84,16 @@ export function createEditorSection(
   let easy: { fitted: boolean; before: { speed: number; clipRange: ClipRange } } | null = null;
   // Changes made by the easy flow itself must not cancel it.
   let internal = false;
+
+  const stillOnly = usesSoftwareRendering();
+  const stillFollower = createStillFollower({
+    delayMs: STILL_DEBOUNCE_MS,
+    schedule: (run, delayMs) => setTimeout(run, delayMs),
+    cancel: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+    ask: (id, startS) => commands.videoStill(id, startS),
+    apply: (path) => update({ still: dependencies.fileUrl(path) }),
+    fail: (failure) => context.notify(`No se pudo mostrar el fotograma del video: ${errorMessage(asErrorUi(failure))}`),
+  });
 
   const byFile = previewMode(platform) === "file";
 
@@ -135,6 +148,13 @@ export function createEditorSection(
     if (creation.kind === "done" && creation.image !== null) URL.revokeObjectURL(creation.image);
   }
 
+  // Where video playback is not possible, a whole frame at the start of the clip stands in for it.
+  // Dragging the start fires many updates, so only the last one is asked for.
+  function followStill(): void {
+    if (!stillOnly || view === null || view.entry.media.kind !== "video" || view.clipRange === null) return;
+    stillFollower.follow(view.entry.id, view.clipRange.start);
+  }
+
   function update(changes: Partial<EditorView>): void {
     if (view === null) return;
     const previous = view.creation;
@@ -145,7 +165,10 @@ export function createEditorSection(
       if (!follows) dropImage(previous);
     }
     screen.render(view);
+    // A new still changes neither the window nor the estimate.
+    if (Object.keys(changes).every((key) => key === "still")) return;
     followClipRange();
+    followStill();
     estimate();
   }
 
@@ -275,6 +298,7 @@ export function createEditorSection(
   function open(id: number, destination: Destination): void {
     const entry = context.entry(id);
     session += 1;
+    stillFollower.reset();
     easy = null;
     if (entry === undefined || entry.media === null) {
       context.notify("No se pudo abrir lo elegido en el editor.");
@@ -304,6 +328,7 @@ export function createEditorSection(
       framing: DEFAULT_FRAMING,
       sidePx: null,
       thumbnails: [],
+      still: null,
       fitPending: false,
       mode,
       preparing: false,
@@ -341,6 +366,7 @@ export function createEditorSection(
     }
     session += 1;
     easy = null;
+    stillFollower.reset();
     dropImage(view.creation);
     view = null;
     window = null;

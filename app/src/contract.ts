@@ -322,6 +322,11 @@ export function timelineThumbnails(id: number, count: number): Promise<string[]>
   return call("timeline_thumbnails", { id, count });
 }
 
+/** Local path of the frame at `atS` with the video's own aspect ratio (longer side up to 640 px). */
+export function videoStill(id: number, atS: number): Promise<string> {
+  return call("video_still", { id, atS });
+}
+
 export function estimate(request: CreateRequest): Promise<EstimateUi> {
   return call("estimate", { request });
 }

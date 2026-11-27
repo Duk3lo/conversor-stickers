@@ -121,6 +121,7 @@ pub fn run() {
             commands::remove_entry,
             commands::preview,
             commands::timeline_thumbnails,
+            commands::video_still,
             commands::cancel_preview,
             commands::create,
             commands::cancel_creation,
