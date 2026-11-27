@@ -8,6 +8,13 @@ export function createBotDemoApi(): BotApi {
   return {
     connection: async () => connection,
     connect: async (url) => (connection = { url, has_token: true, enabled: true }),
+    connectLink: async (link) => {
+      const url = /u=([^&]*)/.exec(link)?.[1];
+      return (connection = { url: url === undefined ? "http://127.0.0.1:8787" : decodeURIComponent(url), has_token: true, enabled: true });
+    },
+    receiveLink: async () => null,
+    acceptLink: async () => connection,
+    rejectLink: async () => undefined,
     disable: async () => (connection = { ...connection, enabled: false }),
     status: async () => status,
     activate: () => change({ active: true }),

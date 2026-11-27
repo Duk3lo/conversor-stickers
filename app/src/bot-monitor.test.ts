@@ -18,6 +18,10 @@ function setup(overrides: Partial<BotApi> = {}) {
   const api: BotApi = {
     connection: async () => connection,
     connect: async () => connection,
+    connectLink: async () => connection,
+    receiveLink: async () => null,
+    acceptLink: async () => connection,
+    rejectLink: async () => undefined,
     disable: async () => ({ ...connection, enabled: false }),
     status: () => {
       calls.push("status");

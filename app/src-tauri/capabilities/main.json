@@ -51,6 +51,7 @@
     "allow-use-gif",
     "allow-klipy-stickers",
     "allow-klipy-categories",
-    "allow-add-klipy-sticker"
+    "allow-add-klipy-sticker",
+    "allow-open-external"
   ]
 }

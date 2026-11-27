@@ -608,6 +608,27 @@ pub(crate) fn open_whatsapp(app: &AppHandle) -> Result<(), UiError> {
     }
 }
 
+/// Opens a web address in the system browser. Rust has already checked it.
+#[cfg(target_os = "android")]
+pub(crate) fn open_url(app: &AppHandle, url: &str) -> Result<(), UiError> {
+    use tauri::Manager;
+
+    #[derive(serde::Serialize)]
+    struct Arguments<'a> {
+        url: &'a str,
+    }
+    app.state::<AndroidBridge>()
+        .0
+        .run_mobile_plugin::<()>("open_url", Arguments { url })
+        // The failure text could repeat the address, which may carry a phone number.
+        .map_err(|_| {
+            UiError::new(
+                UiErrorKind::Other,
+                "no se pudo abrir el navegador del sistema",
+            )
+        })
+}
+
 #[cfg(edition = "github")]
 const BOT_NUMBER_DIGITS: std::ops::RangeInclusive<usize> = 8..=15;
 #[cfg(edition = "github")]
@@ -616,14 +637,28 @@ const BOT_CAPTION_MAX_CHARS: usize = 80;
 #[cfg(edition = "github")]
 /// The bot's number: 8 to 15 digits. Checked here and again in Kotlin, which builds the chat id.
 pub(crate) fn bot_number(number: &str) -> Result<&str, UiError> {
+    phone_digits(
+        number,
+        "el número del bot no es válido: solo dígitos, de 8 a 15",
+    )
+}
+
+#[cfg(edition = "github")]
+/// The number of the WhatsApp to link by code: same shape as the bot's, its own message.
+pub(crate) fn link_number(number: &str) -> Result<&str, UiError> {
+    phone_digits(
+        number,
+        "el número a vincular no es válido: solo dígitos, de 8 a 15, con código de país",
+    )
+}
+
+#[cfg(edition = "github")]
+fn phone_digits<'a>(number: &'a str, message: &'static str) -> Result<&'a str, UiError> {
     if BOT_NUMBER_DIGITS.contains(&number.len()) && number.bytes().all(|byte| byte.is_ascii_digit())
     {
         Ok(number)
     } else {
-        Err(UiError::new(
-            UiErrorKind::InvalidEntry,
-            "el número del bot no es válido: solo dígitos, de 8 a 15",
-        ))
+        Err(UiError::new(UiErrorKind::InvalidEntry, message))
     }
 }
 
@@ -739,6 +774,36 @@ pub(crate) fn take_shared(app: &AppHandle) -> Result<Shared, UiError> {
     }
 }
 
+/// Android: the `conversorstickers://bot#...` link another app opened, delivered only once. It is
+/// raw text; `ConnectionLink::parse` is the one that checks it.
+#[cfg(edition = "github")]
+pub(crate) fn take_bot_link(app: &AppHandle) -> Result<Option<String>, UiError> {
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Ok(None)
+    }
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+
+        #[derive(serde::Deserialize)]
+        struct Opened {
+            link: Option<String>,
+        }
+        app.state::<AndroidBridge>()
+            .0
+            .run_mobile_plugin::<Opened>("take_bot_link", ())
+            .map(|opened| opened.link)
+            .map_err(|_| {
+                UiError::new(
+                    UiErrorKind::Other,
+                    "no se pudo leer el enlace de conexión del bot",
+                )
+            })
+    }
+}
+
 pub(crate) fn read_clipboard(app: &AppHandle) -> Result<ClipboardContent, UiError> {
     #[cfg(not(target_os = "android"))]
     {
@@ -831,6 +896,16 @@ mod tests {
     use std::io::Cursor;
 
     use super::*;
+
+    #[cfg(edition = "github")]
+    #[test]
+    fn each_number_has_its_own_message() {
+        let bot = bot_number("1").unwrap_err().message;
+        let link = link_number("1").unwrap_err().message;
+        assert!(bot.contains("número del bot"), "{bot}");
+        assert!(link.contains("número a vincular"), "{link}");
+        assert!(link_number("34612345678").is_ok());
+    }
 
     #[cfg(edition = "github")]
     #[test]

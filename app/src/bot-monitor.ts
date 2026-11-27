@@ -19,6 +19,9 @@ export interface BotMonitor {
   subscribe(listener: (state: BotState) => void): void;
   load(): Promise<void>;
   connect(url: string, token: string | null): Promise<void>;
+  connectLink(link: string): Promise<void>;
+  /** Saves the link whose address the person just confirmed. */
+  acceptLink(): Promise<void>;
   /** The app stops asking; the bot is not touched. */
   disable(): Promise<void>;
   /** Runs an operation that answers the new status; a failure is thrown after reading the status again. */
@@ -118,6 +121,8 @@ export function createBotMonitor(api: BotApi, timers: Timers = windowTimers): Bo
       }
     },
     connect: (url, token) => change(() => api.connect(url, token)),
+    connectLink: (link) => change(() => api.connectLink(link)),
+    acceptLink: () => change(() => api.acceptLink()),
     disable: () => change(() => api.disable()),
     run(operation) {
       const asked = generation;

@@ -746,6 +746,7 @@ mod tests {
             "contract-bot.ts",
             "contract-community.ts",
             "contract-gifs.ts",
+            "contract-mobile.ts",
         ]
         .iter()
         .map(|file| {

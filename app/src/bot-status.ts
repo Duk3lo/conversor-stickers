@@ -1,5 +1,5 @@
 // What the app says and offers about the bot, from the saved connection and its last answer.
-import type { BotConnectionUi, BotStatusUi } from "./contract-bot.ts";
+import type { BotConnectionUi, BotLinkMethod, BotStatusUi } from "./contract-bot.ts";
 import type { MediaUi, UiError } from "./contract.ts";
 import type { InstalledExtension } from "./extensions.ts";
 import type { Platform } from "./mobile.ts";
@@ -165,9 +165,90 @@ export function numberHeld(installed: InstalledExtension, state: BotState | null
   return installed.extension.id === BOT_EXTENSION_ID && state !== null && botEnabled(state);
 }
 
-/** A phone does not draw the QR (it could not scan its own screen), so it says where it is. */
-export function qrElsewhereText(platform: Platform, qr: string | null): string | null {
+/** A phone cannot scan its own screen, so the QR it draws comes with what to do with it. */
+export function qrNoteText(platform: Platform, qr: string | null): string | null {
   return platform === "android" && qr !== null
-    ? "La vinculación por QR se inició en la PC: escanea el código que se ve allí desde el WhatsApp del bot."
+    ? "WhatsApp no puede escanear con la cámara la pantalla de este mismo celular: haz una captura y escanéala desde otra pantalla (el código QR caduca pronto), o vincula con código."
     : null;
+}
+
+export type PairingPhone = { ok: true; phone: string | null } | { ok: false };
+
+/** The number to link by code, as typed. Empty leaves it to the bot's own configuration. */
+export function pairingPhone(typed: string): PairingPhone {
+  if (typed.trim() === "") return { ok: true, phone: null };
+  const digits = typed.replace(/[\s+\-()]/g, "");
+  return /^[0-9]{8,15}$/.test(digits) ? { ok: true, phone: digits } : { ok: false };
+}
+
+/** What the address field shows when nothing is saved: the bot of this same computer, on desktop. */
+export function defaultBotUrl(platform: Platform): string {
+  return platform === "desktop" ? "http://127.0.0.1:8787" : "";
+}
+
+/** The number field only makes sense while the bot can be linked. */
+export function phoneFieldVisible(state: BotState): boolean {
+  return botActions(state).link;
+}
+
+/**
+ * Starts linking only with a valid request: the QR never sends a number, whatever is typed, and a
+ * number that is not valid never reaches `link`.
+ */
+export function submitLink(
+  method: BotLinkMethod,
+  typedPhone: string,
+  link: (method: BotLinkMethod, phone: string | null) => void,
+  invalidPhone: () => void,
+): void {
+  const typed = pairingPhone(method === "code" ? typedPhone : "");
+  if (typed.ok) link(method, typed.phone);
+  else invalidPhone();
+}
+
+/** The question before saving a connection another app asked for. */
+export function receivedLinkQuestion(url: string): string {
+  return `¿Conectar con el bot en ${url}?`;
+}
+
+export interface ReceivedLink {
+  /** The address of the link another app opened, or `null` if there is none. */
+  receive(): Promise<string | null>;
+  ask(question: string): Promise<boolean>;
+  accept(): Promise<void>;
+  reject(): Promise<void>;
+  fail(error: unknown): void;
+}
+
+/** Nothing is saved unless the person confirms the address; a refusal drops the link. */
+export async function offerReceivedLink(received: ReceivedLink): Promise<void> {
+  try {
+    const url = await received.receive();
+    if (url === null) return;
+    if (await received.ask(receivedLinkQuestion(url))) await received.accept();
+    else await received.reject();
+  } catch (error) {
+    received.fail(error);
+  }
+}
+
+/** Runs `task` one at a time; a call that arrives meanwhile makes it run once more afterwards. */
+export function oneAtATime(task: () => Promise<void>): () => Promise<void> {
+  let running = false;
+  let again = false;
+  return async () => {
+    if (running) {
+      again = true;
+      return;
+    }
+    running = true;
+    try {
+      do {
+        again = false;
+        await task();
+      } while (again);
+    } finally {
+      running = false;
+    }
+  };
 }

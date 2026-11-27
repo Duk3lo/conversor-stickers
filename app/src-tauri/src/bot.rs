@@ -25,6 +25,9 @@ const MAX_HOST_LENGTH: usize = 253;
 const TOKEN_LENGTH: usize = 43;
 const MAX_BOT_TEXT_CHARS: usize = 300;
 const MAX_QR_LENGTH: usize = 1024;
+const CONNECTION_LINK_PREFIX: &str = "conversorstickers://bot#";
+/// Address (at most 260 characters, up to three times that percent-encoded) plus the token.
+const MAX_CONNECTION_LINK_LENGTH: usize = 1024;
 const CONNECTION_FILE: &str = "bot-connection.json";
 
 #[derive(Debug, thiserror::Error)]
@@ -38,6 +41,11 @@ pub(crate) enum BotError {
         "el token no vale: copia entero el contenido del archivo control-token del bot ({TOKEN_LENGTH} caracteres)"
     )]
     InvalidToken,
+
+    #[error(
+        "el enlace de conexión no vale: copia entero el enlace que muestra el bot (empieza por conversorstickers://bot#)"
+    )]
+    InvalidConnectionLink,
 
     #[error("escribe el token: al cambiar la dirección hay que volver a pegarlo")]
     TokenRequired,
@@ -61,6 +69,9 @@ pub(crate) enum BotError {
         "no se puede llegar al bot. ¿Está Tailscale activo en este equipo y en el del bot? ¿Está el bot arrancado?"
     )]
     Unreachable,
+
+    #[error("Ya hay un bot conectado: pulsa Deshabilitar en «Mi bot» antes de usar otro enlace")]
+    AlreadyConnected,
 
     #[error("el bot rechazó el token")]
     Unauthorized,
@@ -92,9 +103,11 @@ pub(crate) enum BotError {
 impl From<BotError> for UiError {
     fn from(error: BotError) -> Self {
         let kind = match error {
-            BotError::InvalidUrl | BotError::InvalidToken | BotError::TokenRequired => {
-                UiErrorKind::InvalidEntry
-            }
+            BotError::InvalidUrl
+            | BotError::InvalidToken
+            | BotError::InvalidConnectionLink
+            | BotError::TokenRequired
+            | BotError::AlreadyConnected => UiErrorKind::InvalidEntry,
             BotError::Unreachable => UiErrorKind::BotUnreachable,
             BotError::Unauthorized => UiErrorKind::BotUnauthorized,
             _ => UiErrorKind::Other,
@@ -177,6 +190,94 @@ impl BotToken {
     }
 }
 
+/// What a connection link carries, already validated. No `Debug`: it holds the token.
+pub(crate) struct ConnectionLink {
+    url: BotUrl,
+    token: BotToken,
+}
+
+impl ConnectionLink {
+    /// `conversorstickers://bot#u=<address, encodeURIComponent>&t=<token>`: exactly those two
+    /// values, each checked with the same rules as when typed. Errors never repeat the link.
+    pub(crate) fn parse(link: &str) -> Result<Self, BotError> {
+        let link = link.trim();
+        if link.len() > MAX_CONNECTION_LINK_LENGTH || !link.is_ascii() {
+            return Err(BotError::InvalidConnectionLink);
+        }
+        let parameters = link
+            .strip_prefix(CONNECTION_LINK_PREFIX)
+            .ok_or(BotError::InvalidConnectionLink)?;
+        let (mut url, mut token) = (None, None);
+        for parameter in parameters.split('&') {
+            let (name, value) = parameter
+                .split_once('=')
+                .ok_or(BotError::InvalidConnectionLink)?;
+            let slot = match name {
+                "u" => &mut url,
+                "t" => &mut token,
+                _ => return Err(BotError::InvalidConnectionLink),
+            };
+            if slot.replace(value).is_some() {
+                return Err(BotError::InvalidConnectionLink);
+            }
+        }
+        let (Some(url), Some(token)) = (url, token) else {
+            return Err(BotError::InvalidConnectionLink);
+        };
+        let url = percent_decoded(url).ok_or(BotError::InvalidConnectionLink)?;
+        Ok(ConnectionLink {
+            url: BotUrl::parse(&url)?,
+            token: BotToken::parse(token)?,
+        })
+    }
+
+    pub(crate) fn url(&self) -> &str {
+        self.url.as_str()
+    }
+}
+
+/// Reverses `encodeURIComponent`; `None` for a broken escape or bytes that are not ASCII.
+fn percent_decoded(text: &str) -> Option<String> {
+    let bytes = text.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut at = 0;
+    while at < bytes.len() {
+        if bytes[at] == b'%' {
+            let digits = text.get(at + 1..at + 3)?;
+            decoded.push(u8::from_str_radix(digits, 16).ok()?);
+            at += 3;
+        } else {
+            decoded.push(bytes[at]);
+            at += 1;
+        }
+    }
+    decoded
+        .is_ascii()
+        .then(|| String::from_utf8(decoded).ok())?
+}
+
+/// The link another app opened, waiting for the person to confirm it. Only its address ever
+/// reaches the interface; the token stays here until it is saved or dropped.
+#[derive(Default)]
+pub(crate) struct PendingLink(Mutex<Option<ConnectionLink>>);
+
+impl PendingLink {
+    fn slot(&self) -> MutexGuard<'_, Option<ConnectionLink>> {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Replaces any earlier one and returns the address to ask about.
+    pub(crate) fn offer(&self, link: ConnectionLink) -> String {
+        let address = link.url().to_owned();
+        *self.slot() = Some(link);
+        address
+    }
+
+    pub(crate) fn take(&self) -> Option<ConnectionLink> {
+        self.slot().take()
+    }
+}
+
 struct Connection {
     url: BotUrl,
     token: BotToken,
@@ -254,6 +355,39 @@ impl ConnectionStore {
                 _ => return Err(BotError::TokenRequired),
             },
         };
+        self.save_enabled(url, token)
+    }
+
+    /// Saves and enables the connection a link carried, replacing the saved one.
+    pub(crate) fn connect_link(&self, link: ConnectionLink) -> Result<BotConnectionUi, BotError> {
+        let _guard = self.guard();
+        self.save_enabled(link.url, link.token)
+    }
+
+    /// Fails while a connection is enabled: a link from another app never replaces it.
+    pub(crate) fn ensure_not_enabled(&self) -> Result<(), BotError> {
+        let _guard = self.guard();
+        self.refuse_if_enabled()
+    }
+
+    /// Like `connect_link`, for a link another app opened: it never replaces an enabled one.
+    pub(crate) fn connect_received_link(
+        &self,
+        link: ConnectionLink,
+    ) -> Result<BotConnectionUi, BotError> {
+        let _guard = self.guard();
+        self.refuse_if_enabled()?;
+        self.save_enabled(link.url, link.token)
+    }
+
+    fn refuse_if_enabled(&self) -> Result<(), BotError> {
+        match self.read()? {
+            Some(connection) if connection.enabled => Err(BotError::AlreadyConnected),
+            _ => Ok(()),
+        }
+    }
+
+    fn save_enabled(&self, url: BotUrl, token: BotToken) -> Result<BotConnectionUi, BotError> {
         let connection = Connection {
             url,
             token,
@@ -356,8 +490,10 @@ struct WireError {
 }
 
 #[derive(Serialize)]
-struct LinkRequest {
+struct LinkRequest<'a> {
     metodo: LinkMethod,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    numero: Option<&'a str>,
 }
 
 pub(crate) struct BotClient {
@@ -417,9 +553,17 @@ impl BotClient {
         )
     }
 
-    pub(crate) fn link(&self, method: LinkMethod) -> Result<BotStatusUi, BotError> {
-        let body = serde_json::to_string(&LinkRequest { metodo: method })
-            .map_err(|_| BotError::InvalidResponse)?;
+    /// `phone` carries the person's number: it never goes into a message or a log.
+    pub(crate) fn link(
+        &self,
+        method: LinkMethod,
+        phone: Option<&str>,
+    ) -> Result<BotStatusUi, BotError> {
+        let request = LinkRequest {
+            metodo: method,
+            numero: phone,
+        };
+        let body = serde_json::to_string(&request).map_err(|_| BotError::InvalidResponse)?;
         read_status(
             self.agent
                 .post(self.endpoint("vinculacion"))
@@ -700,6 +844,108 @@ mod tests {
         assert_eq!(files, 1);
     }
 
+    fn link(address: &str, token: &str) -> String {
+        format!("conversorstickers://bot#u={address}&t={token}")
+    }
+
+    #[test]
+    fn a_connection_link_gives_the_address_and_saves_the_connection() {
+        let parsed =
+            ConnectionLink::parse(&link("https%3A%2F%2Fequipo.red.ts.net", TOKEN)).unwrap();
+        assert_eq!(parsed.url(), "https://equipo.red.ts.net");
+        let local = ConnectionLink::parse(&link("http%3A%2F%2F127.0.0.1%3A8787", TOKEN)).unwrap();
+        assert_eq!(local.url(), "http://127.0.0.1:8787");
+        // The order of the parameters does not matter and the ends are trimmed.
+        let reversed =
+            format!(" conversorstickers://bot#t={TOKEN}&u=http%3A%2F%2Flocalhost%3A8787\n");
+        assert_eq!(
+            ConnectionLink::parse(&reversed).unwrap().url(),
+            "http://localhost:8787"
+        );
+
+        let folder = tempfile::tempdir().unwrap();
+        let store = ConnectionStore::new(folder.path().join(CONNECTION_FILE));
+        let saved = store.connect_link(parsed).unwrap();
+        assert_eq!(saved.url.as_deref(), Some("https://equipo.red.ts.net"));
+        assert!(saved.has_token && saved.enabled);
+        assert!(!serde_json::to_string(&saved).unwrap().contains(TOKEN));
+    }
+
+    #[test]
+    fn a_received_link_never_replaces_an_enabled_connection() {
+        let folder = tempfile::tempdir().unwrap();
+        let store = ConnectionStore::new(folder.path().join(CONNECTION_FILE));
+        let first = ConnectionLink::parse(&link("https%3A%2F%2Funo.red.ts.net", TOKEN)).unwrap();
+        let second =
+            ConnectionLink::parse(&link("https%3A%2F%2Fdos.red.ts.net", OTHER_TOKEN)).unwrap();
+        store.connect_received_link(first).unwrap();
+        assert!(matches!(
+            store.ensure_not_enabled(),
+            Err(BotError::AlreadyConnected)
+        ));
+        assert!(matches!(
+            store.connect_received_link(second),
+            Err(BotError::AlreadyConnected)
+        ));
+        let kept = store.summary().unwrap();
+        assert_eq!(kept.url.as_deref(), Some("https://uno.red.ts.net"));
+        // Once disabled, another link is accepted.
+        store.disable().unwrap();
+        store.ensure_not_enabled().unwrap();
+        let third =
+            ConnectionLink::parse(&link("https%3A%2F%2Fdos.red.ts.net", OTHER_TOKEN)).unwrap();
+        let saved = store.connect_received_link(third).unwrap();
+        assert_eq!(saved.url.as_deref(), Some("https://dos.red.ts.net"));
+    }
+
+    #[test]
+    fn a_connection_link_follows_the_same_rules_as_typing() {
+        let good = "https%3A%2F%2Fequipo.red.ts.net";
+        let url = || "InvalidUrl";
+        let token = || "InvalidToken";
+        let shape = || "InvalidConnectionLink";
+        let cases = [
+            (link("http%3A%2F%2Fexample.com", TOKEN), url()),
+            (link("https%3A%2F%2Fexample.com", TOKEN), url()),
+            (link("https%3A%2F%2Fequipo.red.ts.net%2Fruta", TOKEN), url()),
+            (link("https%3A%2F%2Fuser%40equipo.red.ts.net", TOKEN), url()),
+            (link(good, "corto"), token()),
+            (link(good, &format!("{TOKEN}x")), token()),
+            (link("https%3A%2F%2Fequipo.red.ts.net%zz", TOKEN), shape()),
+            (format!("conversorstickers://bot#u={good}"), shape()),
+            (
+                format!("conversorstickers://bot#u={good}&u={good}&t={TOKEN}"),
+                shape(),
+            ),
+            (
+                format!("conversorstickers://bot#u={good}&t={TOKEN}&x=1"),
+                shape(),
+            ),
+            (format!("https://bot#u={good}&t={TOKEN}"), shape()),
+        ];
+        for (text, expected) in &cases {
+            let error = ConnectionLink::parse(text).err().unwrap();
+            assert_eq!(format!("{error:?}"), *expected);
+            assert!(!error.to_string().contains(TOKEN));
+        }
+        let long = link(&"a".repeat(MAX_CONNECTION_LINK_LENGTH), TOKEN);
+        assert!(ConnectionLink::parse(&long).is_err());
+        assert!(ConnectionLink::parse("").is_err());
+    }
+
+    #[test]
+    fn a_pending_link_is_confirmed_once_and_the_last_one_wins() {
+        let pending = PendingLink::default();
+        assert!(pending.take().is_none());
+        let first = ConnectionLink::parse(&link("https%3A%2F%2Funo.red.ts.net", TOKEN)).unwrap();
+        let second =
+            ConnectionLink::parse(&link("https%3A%2F%2Fdos.red.ts.net", OTHER_TOKEN)).unwrap();
+        assert_eq!(pending.offer(first), "https://uno.red.ts.net");
+        assert_eq!(pending.offer(second), "https://dos.red.ts.net");
+        assert_eq!(pending.take().unwrap().url(), "https://dos.red.ts.net");
+        assert!(pending.take().is_none());
+    }
+
     #[test]
     fn another_address_needs_the_token_again() {
         let folder = tempfile::tempdir().unwrap();
@@ -793,12 +1039,12 @@ mod tests {
             (BotClient::activate, "POST /activar ", ""),
             (BotClient::pause, "POST /pausar ", ""),
             (
-                |client| client.link(LinkMethod::Code),
+                |client| client.link(LinkMethod::Code, Some("34600111222")),
                 "POST /vinculacion ",
-                r#"{"metodo":"codigo"}"#,
+                r#"{"metodo":"codigo","numero":"34600111222"}"#,
             ),
             (
-                |client| client.link(LinkMethod::Qr),
+                |client| client.link(LinkMethod::Qr, None),
                 "POST /vinculacion ",
                 r#"{"metodo":"qr"}"#,
             ),

@@ -8,11 +8,13 @@ import { backAction } from "./mobile.ts";
 import { element } from "./dom.ts";
 import { editionBadge, githubEdition } from "./edition.ts";
 import { platform } from "./platform.ts";
-import { openSavedFolder, openWhatsapp } from "./contract-mobile.ts";
+import { openExternal, openSavedFolder, openWhatsapp } from "./contract-mobile.ts";
 import { errorMessage } from "./messages.ts";
 import type { SavedFolder } from "./saved-folder.ts";
 import { back, changeSection, goToRoot, type Navigation, initialNavigation } from "./navigation.ts";
 import { apiGifsReal } from "./api-gifs.ts";
+import { watchReceivedLinks } from "./bot-link-prompt.ts";
+import { keepLinksOutside } from "./external-links.ts";
 import { createBotMonitor } from "./bot-monitor.ts";
 import { botApi } from "./contract-bot.ts";
 import { apiReal } from "./catalog-api.ts";
@@ -74,6 +76,7 @@ function startApp(): void {
     closeLayer: () => layers.some((close) => close()),
   };
 
+  keepLinksOutside(openExternal, (failure) => context.notify(errorMessage(asErrorUi(failure))));
   const bot = githubEdition ? createBotMonitor(botApi) : null;
   const stickers = createStickersSection(context, convertFileSrc);
   const gifs = createGifsSection(context);
@@ -131,6 +134,9 @@ function startApp(): void {
     document.addEventListener("visibilitychange", () => bot.setForeground(document.visibilityState === "visible"));
     // A failure stays in the monitor's state, which the panel and the editor show.
     void bot.load();
+    if (platform === "android") {
+      watchReceivedLinks(botApi, bot, (failure) => context.notify(errorMessage(asErrorUi(failure))));
+    }
   }
   catalog.onChange(detail.onCatalogChange);
   catalog.onChange(favorites.onCatalogChange);

@@ -4,7 +4,7 @@ import { test } from "node:test";
 import type { BotStatusUi } from "./contract-bot.ts";
 import type { MediaUi, UiError } from "./contract.ts";
 import { builtinExtension, type InstalledExtension } from "./extensions.ts";
-import { type BotState, botActions, botBox, botNotice, describeBot, manualTargets, numberHeld, pollDelayMs, qrElsewhereText } from "./bot-status.ts";
+import { type BotState, botActions, botBox, botNotice, describeBot, defaultBotUrl, manualTargets, numberHeld, offerReceivedLink, oneAtATime, pairingPhone, phoneFieldVisible, pollDelayMs, qrNoteText, receivedLinkQuestion, submitLink } from "./bot-status.ts";
 
 const connection = { url: "https://equipo.red.ts.net", has_token: true, enabled: true };
 const paused: BotStatusUi = { link: "linked", connection: "connected", active: false, code: null, qr: null, notice: null };
@@ -103,8 +103,108 @@ test("the bot number is held while its connection is enabled", () => {
   assert.equal(numberHeld(other, enabled({})), false);
 });
 
-test("a QR started on the computer is not asked to be scanned on the phone", () => {
-  assert.match(qrElsewhereText("android", "2@abc") ?? "", /en la PC/);
-  assert.equal(qrElsewhereText("desktop", "2@abc"), null);
-  assert.equal(qrElsewhereText("android", null), null);
+test("on the phone the QR comes with how to scan it", () => {
+  assert.match(qrNoteText("android", "2@abc") ?? "", /captura.*otra pantalla.*código/s);
+  assert.equal(qrNoteText("desktop", "2@abc"), null);
+  assert.equal(qrNoteText("android", null), null);
+});
+
+test("the number to link by code is cleaned, optional and validated", () => {
+  assert.deepEqual(pairingPhone(" +34 600-111 (222) "), { ok: true, phone: "34600111222" });
+  assert.deepEqual(pairingPhone("  "), { ok: true, phone: null });
+  for (const typed of ["1234567", "1234567890123456", "34600abc222", "+", "34.600.111.222"]) {
+    assert.deepEqual(pairingPhone(typed), { ok: false }, typed);
+  }
+});
+
+test("the QR never sends a number, even if the field is filled in", () => {
+  const sent: (string | null)[] = [];
+  let invalid = 0;
+  submitLink("qr", "+34 600 111 222", (_, phone) => sent.push(phone), () => invalid++);
+  submitLink("qr", "abc", (_, phone) => sent.push(phone), () => invalid++);
+  assert.deepEqual(sent, [null, null]);
+  assert.equal(invalid, 0);
+});
+
+test("a number that is not valid never calls link", () => {
+  const calls: string[] = [];
+  let invalid = 0;
+  for (const typed of ["1234567", "1234567890123456", "34600abc222"]) {
+    submitLink("code", typed, (method) => calls.push(method), () => invalid++);
+  }
+  assert.deepEqual(calls, []);
+  assert.equal(invalid, 3);
+  submitLink("code", "+34 600 111 222", (method, phone) => calls.push(`${method}:${phone}`), () => invalid++);
+  submitLink("code", "", (method, phone) => calls.push(`${method}:${phone}`), () => invalid++);
+  assert.deepEqual(calls, ["code:34600111222", "code:null"]);
+  assert.equal(invalid, 3);
+});
+
+test("the number field is only there while the bot can be linked", () => {
+  assert.equal(phoneFieldVisible(enabled({ link: "unlinked", connection: "disconnected" })), true);
+  for (const state of [off, enabled(null), enabled({}), enabled({ link: "linking", connection: "connecting" }), enabled(null, { kind: "bot_unreachable", message: "x" })]) {
+    assert.equal(phoneFieldVisible(state), false);
+  }
+});
+
+test("on desktop an empty address starts as the bot of this same computer", () => {
+  assert.equal(defaultBotUrl("desktop"), "http://127.0.0.1:8787");
+  assert.equal(defaultBotUrl("android"), "");
+});
+
+function received(url: string | null, answer: boolean, failure?: Error) {
+  const calls: string[] = [];
+  const fails: unknown[] = [];
+  const done = offerReceivedLink({
+    receive: async () => {
+      if (failure !== undefined) throw failure;
+      return url;
+    },
+    ask: async (question) => {
+      calls.push(question);
+      return answer;
+    },
+    accept: async () => void calls.push("accept"),
+    reject: async () => void calls.push("reject"),
+    fail: (error) => void fails.push(error),
+  });
+  return { calls, fails, done };
+}
+
+test("a received link is saved only after the person confirms its address", async () => {
+  const yes = received("https://equipo.red.ts.net", true);
+  await yes.done;
+  assert.deepEqual(yes.calls, ["¿Conectar con el bot en https://equipo.red.ts.net?", "accept"]);
+  assert.equal(receivedLinkQuestion("http://127.0.0.1:8787"), "¿Conectar con el bot en http://127.0.0.1:8787?");
+});
+
+test("a refused link is dropped, no link asks nothing and a failure is reported", async () => {
+  const no = received("https://equipo.red.ts.net", false);
+  await no.done;
+  assert.deepEqual(no.calls.slice(1), ["reject"]);
+  const none = received(null, true);
+  await none.done;
+  assert.deepEqual(none.calls, []);
+  const broken = received(null, true, new Error("enlace no válido"));
+  await broken.done;
+  assert.equal(broken.fails.length, 1);
+  assert.deepEqual(broken.calls, []);
+});
+
+test("a call during a run makes it run once more, and several calls only once", async () => {
+  let runs = 0;
+  let release = (): void => {};
+  const run = oneAtATime(async () => {
+    runs += 1;
+    if (runs === 1) await new Promise<void>((resolve) => (release = resolve));
+  });
+  const first = run();
+  await run();
+  await run();
+  assert.equal(runs, 1);
+  release();
+  await first;
+  assert.equal(runs, 2);
+  await run();
+  assert.equal(runs, 3);
 });

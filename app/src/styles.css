@@ -2765,6 +2765,17 @@ a {
   align-self: flex-start;
 }
 
+.bot-advanced > summary {
+  min-height: var(--touch);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.bot-advanced[open] > .bot-form {
+  padding-bottom: 8px;
+}
+
 .bot-state {
   font-weight: 600;
 }

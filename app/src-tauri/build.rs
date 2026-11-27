@@ -59,6 +59,7 @@ const COMMANDS: &[&str] = &[
     "send_sticker_to_whatsapp",
     "open_saved_folder",
     "open_whatsapp",
+    "open_external",
 ];
 
 // Only in the `github` edition (`cfg(edition = "github")`, set by `main`): extensions, the link
@@ -71,6 +72,10 @@ const GITHUB_COMMANDS: &[&str] = &[
     "send_to_bot",
     "bot_connection",
     "bot_connect",
+    "bot_connect_link",
+    "bot_receive_link",
+    "bot_accept_link",
+    "bot_reject_link",
     "bot_disable",
     "bot_status",
     "bot_activate",

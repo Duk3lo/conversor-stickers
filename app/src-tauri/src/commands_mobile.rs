@@ -14,6 +14,7 @@ use tracing::{info, warn};
 use crate::commands::in_background;
 use crate::commands_packs::LibraryState;
 use crate::contract::{EntryUi, MediaKind, MediaOrigin, MediaUi, UiError, UiErrorKind};
+use crate::external;
 use crate::mobile::{self, AddResponse, SharedMedia, android_only};
 use crate::session::{PASTE_LIMIT_BYTES, Session};
 use crate::whatsapp::{self, WhatsappError};
@@ -383,6 +384,14 @@ pub(crate) async fn open_saved_folder(kind: String, app: AppHandle) -> Result<()
 pub(crate) async fn open_whatsapp(app: AppHandle) -> Result<(), UiError> {
     require_android()?;
     in_background(move || mobile::open_whatsapp(&app)).await
+}
+
+/// Opens a web address in the system browser, on any platform. Only `https` addresses of the sites
+/// the app links to.
+#[tauri::command]
+pub(crate) async fn open_external(url: String, app: AppHandle) -> Result<(), UiError> {
+    external::check_external(&url)?;
+    in_background(move || external::launch(&app, &url)).await
 }
 
 /// Shares the saved clip to the bot's WhatsApp chat, with the settings caption the bot reads.
