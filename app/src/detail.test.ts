@@ -13,7 +13,6 @@ import {
   moveOne,
   checkText,
   withdrawnUrl,
-  CONTRIBUTE_URL,
 } from "./detail.ts";
 
 function sticker(id: number): StickerUi {
@@ -198,6 +197,3 @@ test("the withdrawal link opens the takedown form of the community repository wi
   assert.equal(url.searchParams.get("pack"), "gatos-garabato");
 });
 
-test("the contribute link points to the community repository", () => {
-  assert.equal(CONTRIBUTE_URL, "https://github.com/Duk3lo/conversor-stickers-comunidad/blob/main/CONTRIBUTING.md");
-});

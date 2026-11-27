@@ -196,4 +196,3 @@ export function withdrawnUrl(packId: string): string {
   return `${COMMUNITY_LINK}/issues/new?${query}`;
 }
 
-export const CONTRIBUTE_URL = `${COMMUNITY_LINK}/blob/main/CONTRIBUTING.md`;

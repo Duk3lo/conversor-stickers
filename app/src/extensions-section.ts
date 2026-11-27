@@ -39,10 +39,12 @@ export function createExtensionsSection(bot: BotPanelDependencies): void {
     box.dataset["extension"] = extension.id;
     const title = create("h4", "subtitle", extension.name);
     const description = create("p", "secondary small", extension.description);
-    const link = create("a", "", extension.url);
-    link.href = extension.url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
+    const link = extension.id === BOT_EXTENSION_ID ? null : create("a", "", extension.url);
+    if (link !== null) {
+      link.href = extension.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    }
     const notice = create("p", "secondary small", extension.notice);
 
     const check = create("label", "check-row");
@@ -57,7 +59,7 @@ export function createExtensionsSection(bot: BotPanelDependencies): void {
     remove.dataset["remove"] = extension.id;
     remove.setAttribute("aria-label", `Quitar ${extension.name}`);
     const { form, hold } = numberForm(extension, number);
-    box.append(title, description, link, notice, check, form);
+    box.append(title, description, ...(link === null ? [] : [link]), notice, check, form);
     if (extension.id === BOT_EXTENSION_ID) {
       botPanel.hidden = !accepted;
       holdBotNumber = () => {

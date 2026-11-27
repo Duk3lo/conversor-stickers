@@ -1,5 +1,5 @@
 import { COMMUNITY_NOTICE, Licenses } from "./community.ts";
-import { checkText, withdrawnUrl, CONTRIBUTE_URL } from "./detail.ts";
+import { checkText, withdrawnUrl } from "./detail.ts";
 import { button, create, element, icon, image, renderFocusKeeping } from "./dom.ts";
 import { originLabel } from "./klipy.ts";
 import { platform } from "./platform.ts";
@@ -186,13 +186,7 @@ export function createDetailView(actions: DetailActions, fileUrl: FileUrl): { re
     const form = create("form", "block form-propose");
     form.noValidate = true;
     form.setAttribute("aria-label", "Proponer a la comunidad");
-    const explanation = create("p", "secondary small", "No se sube nada: se crea un .zip con la carpeta del paquete para abrir una propuesta en el repositorio de la comunidad. ");
-    const link = document.createElement("a");
-    link.href = CONTRIBUTE_URL;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = "Cómo se propone un paquete";
-    explanation.append(link);
+    const explanation = create("p", "secondary small", "No se sube nada: se crea un .zip con la carpeta del paquete para proponerlo a la comunidad.");
     form.append(explanation);
 
     const license = document.createElement("select");

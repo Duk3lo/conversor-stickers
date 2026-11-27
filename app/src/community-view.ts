@@ -1,6 +1,5 @@
 import { communityErrorText } from "./community.ts";
-import { CONTRIBUTE_URL } from "./detail.ts";
-import { button, create, element, icon, image, renderFocusKeeping } from "./dom.ts";
+import { button, create, element, image, renderFocusKeeping } from "./dom.ts";
 import type { FileUrl } from "./catalog-view.ts";
 import { createNoticeWithoutConnection, createState } from "./catalog-view.ts";
 import {
@@ -72,14 +71,6 @@ export function createCommunityView(actions: CommunityActions, fileUrl: FileUrl)
     if (view.updated !== null) facts.push(`Catálogo del ${view.updated}`);
     if (facts.length > 0) texts.append(create("p", "small secondary community-facts", facts.join(" · ")));
     header.append(texts);
-    const propose = document.createElement("a");
-    propose.className = "button-secondary community-propose link-external";
-    propose.href = CONTRIBUTE_URL;
-    propose.target = "_blank";
-    propose.rel = "noopener noreferrer";
-    propose.append(icon("export"), document.createTextNode("Proponer un paquete"));
-    propose.setAttribute("aria-label", "Proponer un paquete (se abre en el navegador)");
-    header.append(propose);
     if (view.offline && view.updated !== null) {
       const notice = createNoticeWithoutConnection(`Sin conexión: catálogo del ${view.updated}.`, actions.update);
       notice.classList.add("community-notice");

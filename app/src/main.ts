@@ -6,7 +6,7 @@ import type { EntryUi } from "./contract.ts";
 import { asErrorUi } from "./contract.ts";
 import { backAction } from "./mobile.ts";
 import { element } from "./dom.ts";
-import { editionBadge, githubEdition } from "./edition.ts";
+import { githubEdition } from "./edition.ts";
 import { platform } from "./platform.ts";
 import { openExternal, openSavedFolder, openWhatsapp } from "./contract-mobile.ts";
 import { errorMessage } from "./messages.ts";
@@ -122,12 +122,6 @@ function startApp(): void {
     catalog: catalog.catalog,
   });
   createBackupSection({ api: apiReal, setLibrary: stickers.setLibrary });
-  const badge = editionBadge(import.meta.env?.VITE_EDITION);
-  if (badge !== null) {
-    const label = element("edition-badge");
-    label.textContent = badge;
-    label.hidden = false;
-  }
   if (bot === null) element("section-extensions").remove();
   else {
     createExtensionsSection({ monitor: bot, platform, openWhatsapp: () => context.openWhatsapp() });
