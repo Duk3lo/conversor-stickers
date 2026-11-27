@@ -4,7 +4,7 @@ import { test } from "node:test";
 import type { BotStatusUi } from "./contract-bot.ts";
 import type { MediaUi, UiError } from "./contract.ts";
 import { builtinExtension, type InstalledExtension } from "./extensions.ts";
-import { type BotState, botActions, botBox, botNotice, describeBot, defaultBotUrl, manualTargets, numberHeld, offerReceivedLink, oneAtATime, pairingPhone, phoneFieldVisible, pollDelayMs, qrNoteText, receivedLinkQuestion, submitLink } from "./bot-status.ts";
+import { type BotState, botActions, botBox, botNotice, describeBot, manualTargets, numberHeld, offerReceivedLink, oneAtATime, pairingPhone, phoneFieldVisible, pollDelayMs, qrNoteText, receivedLinkQuestion, shouldConnectLocal, submitLink } from "./bot-status.ts";
 
 const connection = { url: "https://equipo.red.ts.net", has_token: true, enabled: true };
 const paused: BotStatusUi = { link: "linked", connection: "connected", active: false, code: null, qr: null, notice: null };
@@ -147,9 +147,14 @@ test("the number field is only there while the bot can be linked", () => {
   }
 });
 
-test("on desktop an empty address starts as the bot of this same computer", () => {
-  assert.equal(defaultBotUrl("desktop"), "http://127.0.0.1:8787");
-  assert.equal(defaultBotUrl("android"), "");
+test("only desktop, with the panel visible and nothing saved, looks for the bot of this computer", () => {
+  const nothing: BotState = { connection: { url: null, has_token: false, enabled: false }, status: null, error: null };
+  assert.equal(shouldConnectLocal("desktop", nothing, true), true);
+  assert.equal(shouldConnectLocal("android", nothing, true), false);
+  assert.equal(shouldConnectLocal("desktop", nothing, false), false);
+  assert.equal(shouldConnectLocal("desktop", { ...nothing, connection: null }, true), false);
+  const saved = { ...nothing, connection: { url: "http://127.0.0.1:8787", has_token: true, enabled: false } };
+  assert.equal(shouldConnectLocal("desktop", saved, true), false);
 });
 
 function received(url: string | null, answer: boolean, failure?: Error) {

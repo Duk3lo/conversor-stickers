@@ -12,6 +12,7 @@ export function createBotDemoApi(): BotApi {
       const url = /u=([^&]*)/.exec(link)?.[1];
       return (connection = { url: url === undefined ? "http://127.0.0.1:8787" : decodeURIComponent(url), has_token: true, enabled: true });
     },
+    connectLocal: async () => null,
     receiveLink: async () => null,
     acceptLink: async () => connection,
     rejectLink: async () => undefined,

@@ -117,22 +117,30 @@ export const builtinExtension: ExtensionUi = {
   max_sound_s: 10,
 };
 
-/** Until the user saves a list (even an empty one, after «Quitar»), the built-in extension is there, unaccepted. */
+/** The built-in extension is always there, even if an older version let the user remove it; it keeps its acceptance and number. */
 export function loadExtensions(
   store: Store | null,
   preinstalled: readonly ExtensionUi[] = githubEdition ? [builtinExtension] : [],
 ): InstalledExtension[] {
+  const withPreinstalled = (list: InstalledExtension[]): InstalledExtension[] => [
+    ...preinstalled
+      .filter((extension) => !list.some((installed) => installed.extension.id === extension.id))
+      .map((extension) => ({ extension, accepted: false, number: null })),
+    ...list,
+  ];
   try {
     const stored = store?.getItem(KEY) ?? null;
-    if (stored === null) return preinstalled.map((extension) => ({ extension, accepted: false, number: null }));
+    if (stored === null) return withPreinstalled([]);
     const parsed: unknown = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isInstalled).map((installed) => {
-      const number = installed.number !== null && STORED_NUMBER.test(installed.number) ? installed.number : null;
-      return { ...installed, number };
-    });
+    if (!Array.isArray(parsed)) return withPreinstalled([]);
+    return withPreinstalled(
+      parsed.filter(isInstalled).map((installed) => {
+        const number = installed.number !== null && STORED_NUMBER.test(installed.number) ? installed.number : null;
+        return { ...installed, number };
+      }),
+    );
   } catch {
-    return [];
+    return withPreinstalled([]);
   }
 }
 
@@ -147,7 +155,13 @@ export function installExtension(list: readonly InstalledExtension[], extension:
   return previous === undefined ? [...list, next] : list.map((installed) => (installed === previous ? next : installed));
 }
 
+/** The bot shipped with the app stays: it is the one the connection and the framing belong to. */
+export function canRemoveExtension(id: string): boolean {
+  return id !== builtinExtension.id;
+}
+
 export function removeExtension(list: readonly InstalledExtension[], id: string): InstalledExtension[] {
+  if (!canRemoveExtension(id)) return [...list];
   return list.filter((installed) => installed.extension.id !== id);
 }
 

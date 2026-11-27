@@ -20,6 +20,8 @@ export interface BotMonitor {
   load(): Promise<void>;
   connect(url: string, token: string | null): Promise<void>;
   connectLink(link: string): Promise<void>;
+  /** Desktop: connects to the bot of this computer if nothing is saved; the state stays as it was otherwise. */
+  connectLocal(): Promise<void>;
   /** Saves the link whose address the person just confirmed. */
   acceptLink(): Promise<void>;
   /** The app stops asking; the bot is not touched. */
@@ -122,6 +124,10 @@ export function createBotMonitor(api: BotApi, timers: Timers = windowTimers): Bo
     },
     connect: (url, token) => change(() => api.connect(url, token)),
     connectLink: (link) => change(() => api.connectLink(link)),
+    async connectLocal() {
+      const connection = await api.connectLocal();
+      if (connection !== null) await change(async () => connection);
+    },
     acceptLink: () => change(() => api.acceptLink()),
     disable: () => change(() => api.disable()),
     run(operation) {

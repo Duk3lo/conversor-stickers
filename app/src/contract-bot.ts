@@ -28,6 +28,8 @@ export interface BotApi {
   connect(url: string, token: string | null): Promise<BotConnectionUi>;
   /** Connects with the link the bot shows; Rust checks it and the token never comes back. */
   connectLink(link: string): Promise<BotConnectionUi>;
+  /** Desktop: with nothing saved, connects to the bot of this computer from its own files. `null` if there was nothing to do. */
+  connectLocal(): Promise<BotConnectionUi | null>;
   /** Android: the link another app opened, kept in Rust until confirmed. Resolves its address, or `null`. */
   receiveLink(): Promise<string | null>;
   /** Saves the link `receiveLink` returned the address of. */
@@ -48,6 +50,7 @@ export const botApi: BotApi = {
   connection: () => call("bot_connection"),
   connect: (url, token) => call("bot_connect", { url, token }),
   connectLink: (link) => call("bot_connect_link", { link }),
+  connectLocal: () => call("bot_connect_local"),
   receiveLink: () => call("bot_receive_link"),
   acceptLink: () => call("bot_accept_link"),
   rejectLink: () => call("bot_reject_link"),

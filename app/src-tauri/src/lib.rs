@@ -186,6 +186,8 @@ pub fn run() {
             #[cfg(edition = "github")]
             commands_bot::bot_connect_link,
             #[cfg(edition = "github")]
+            commands_bot::bot_connect_local,
+            #[cfg(edition = "github")]
             commands_bot::bot_receive_link,
             #[cfg(edition = "github")]
             commands_bot::bot_accept_link,

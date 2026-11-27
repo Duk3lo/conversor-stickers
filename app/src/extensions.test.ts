@@ -6,6 +6,7 @@ import { test } from "node:test";
 import type { ExtensionUi } from "./contract.ts";
 import {
   buildNumber,
+  canRemoveExtension,
   builtinExtension,
   changeExtension,
   countryOptions,
@@ -126,10 +127,18 @@ test("a new extension starts unaccepted and without number; reinstalling keeps t
   assert.deepEqual([list[0]?.extension.notice, list[0]?.accepted, list[0]?.number], ["Otro aviso.", false, "34612345678"]);
 });
 
-test("removing an extension leaves the others", () => {
+test("removing a third-party extension leaves the others", () => {
   const other = { ...bot, id: "otra" };
   const list = installExtension(installExtension([], bot), other);
-  assert.deepEqual(removeExtension(list, bot.id).map((installed) => installed.extension.id), ["otra"]);
+  assert.deepEqual(removeExtension(list, other.id).map((installed) => installed.extension.id), [bot.id]);
+  assert.equal(canRemoveExtension(other.id), true);
+});
+
+test("the built-in bot extension cannot be removed", () => {
+  const other = { ...bot, id: "otra" };
+  const list = installExtension(installExtension([], builtinExtension), other);
+  assert.equal(canRemoveExtension(builtinExtension.id), false);
+  assert.deepEqual(removeExtension(list, builtinExtension.id), list);
 });
 
 test("the state survives saving and loading", () => {
@@ -142,9 +151,10 @@ test("the state survives saving and loading", () => {
 });
 
 test("stored garbage is dropped and a bad number is forgotten", () => {
-  assert.deepEqual(loadExtensions(memoryStore({ "conversor.extensions": "no es json" })), []);
-  assert.deepEqual(loadExtensions(memoryStore({ "conversor.extensions": '{"a":1}' })), []);
-  assert.deepEqual(loadExtensions(memoryStore({ "conversor.extensions": '[{"extension":{"id":1}}]' })), []);
+  const onlyBuiltin = [{ extension: builtinExtension, accepted: false, number: null }];
+  assert.deepEqual(loadExtensions(memoryStore({ "conversor.extensions": "no es json" })), onlyBuiltin);
+  assert.deepEqual(loadExtensions(memoryStore({ "conversor.extensions": '{"a":1}' })), onlyBuiltin);
+  assert.deepEqual(loadExtensions(memoryStore({ "conversor.extensions": '[{"extension":{"id":1}}]' })), onlyBuiltin);
   const stored = JSON.stringify([{ extension: bot, accepted: true, number: "12" }]);
   assert.equal(loadExtensions(memoryStore({ "conversor.extensions": stored }))[0]?.number, null);
 });
@@ -183,13 +193,20 @@ test("the still image notice appears when the sound outlasts the 10 s sticker im
   assert.equal(stillImageNotice({ ...bot, sound: false }, 100), null);
 });
 
-test("the built-in extension starts unaccepted and without number, and removing it sticks", () => {
+test("the built-in extension starts unaccepted and without number", () => {
   const store = memoryStore();
   const initial = loadExtensions(store);
   assert.deepEqual(initial, [{ extension: builtinExtension, accepted: false, number: null }]);
   assert.deepEqual(sendTargets(initial, "android", saved), []);
-  saveExtensions(store, removeExtension(initial, builtinExtension.id));
-  assert.deepEqual(loadExtensions(store), []);
+  // A list saved without it (removed with an older version) does not hide it.
+  saveExtensions(store, []);
+  assert.deepEqual(loadExtensions(store), initial);
+  const other = { ...bot, id: "otra" };
+  saveExtensions(store, installExtension([], other));
+  assert.deepEqual(loadExtensions(store).map((installed) => installed.extension.id), [builtinExtension.id, "otra"]);
+  const kept = changeExtension(initial, builtinExtension.id, { accepted: true, number: "34612345678" });
+  saveExtensions(store, kept);
+  assert.deepEqual(loadExtensions(store), kept);
   assert.deepEqual(loadExtensions(memoryStore(), []), []);
 });
 

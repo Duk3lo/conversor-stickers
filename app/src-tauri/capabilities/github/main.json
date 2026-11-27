@@ -11,6 +11,7 @@
     "allow-bot-connection",
     "allow-bot-connect",
     "allow-bot-connect-link",
+    "allow-bot-connect-local",
     "allow-bot-receive-link",
     "allow-bot-accept-link",
     "allow-bot-reject-link",

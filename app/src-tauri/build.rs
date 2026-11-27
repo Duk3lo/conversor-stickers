@@ -74,6 +74,7 @@ const GITHUB_COMMANDS: &[&str] = &[
     "bot_connection",
     "bot_connect",
     "bot_connect_link",
+    "bot_connect_local",
     "bot_receive_link",
     "bot_accept_link",
     "bot_reject_link",

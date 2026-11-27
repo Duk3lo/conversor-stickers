@@ -181,9 +181,12 @@ export function pairingPhone(typed: string): PairingPhone {
   return /^[0-9]{8,15}$/.test(digits) ? { ok: true, phone: digits } : { ok: false };
 }
 
-/** What the address field shows when nothing is saved: the bot of this same computer, on desktop. */
-export function defaultBotUrl(platform: Platform): string {
-  return platform === "desktop" ? "http://127.0.0.1:8787" : "";
+/**
+ * On desktop, the first time the panel is on screen with nothing saved, the app looks for the bot
+ * of this same computer instead of asking for a link. The saved connection must have been read.
+ */
+export function shouldConnectLocal(platform: Platform, state: BotState, panelVisible: boolean): boolean {
+  return platform === "desktop" && panelVisible && state.connection !== null && state.connection.url === null;
 }
 
 /** The number field only makes sense while the bot can be linked. */

@@ -2,6 +2,7 @@
 //! it. The bot is reached through Tailscale or on this machine; everything it answers is untrusted.
 //! Nothing here logs the token, the pairing code, the QR or phone numbers.
 
+use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
@@ -29,6 +30,11 @@ const CONNECTION_LINK_PREFIX: &str = "conversorstickers://bot#";
 /// Address (at most 260 characters, up to three times that percent-encoded) plus the token.
 const MAX_CONNECTION_LINK_LENGTH: usize = 1024;
 const CONNECTION_FILE: &str = "bot-connection.json";
+/// Where the bot leaves its token and port for apps on the same computer.
+const LOCAL_BOT_FOLDER: &str = "bot-stickers-sonido";
+const LOCAL_TOKEN_FILE: &str = "control-token";
+const LOCAL_PORT_FILE: &str = "conexion.json";
+const MAX_LOCAL_FILE_BYTES: u64 = 4 * 1024;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum BotError {
@@ -49,6 +55,11 @@ pub(crate) enum BotError {
 
     #[error("escribe el token: al cambiar la dirección hay que volver a pegarlo")]
     TokenRequired,
+
+    #[error(
+        "los archivos del bot en este equipo no valen; usa el enlace que muestra el bot al arrancar"
+    )]
+    InvalidLocalBot,
 
     #[error("la conexión con el bot no está habilitada")]
     NotEnabled,
@@ -106,6 +117,7 @@ impl From<BotError> for UiError {
             BotError::InvalidUrl
             | BotError::InvalidToken
             | BotError::InvalidConnectionLink
+            | BotError::InvalidLocalBot
             | BotError::TokenRequired
             | BotError::AlreadyConnected => UiErrorKind::InvalidEntry,
             BotError::Unreachable => UiErrorKind::BotUnreachable,
@@ -117,7 +129,7 @@ impl From<BotError> for UiError {
 }
 
 /// The base address of the bot, normalized: `https://<host>.ts.net[:port]`, or `http` to this
-/// machine only. No user info, path, query or fragment.
+/// machine or to a private IPv4 of the local network. No user info, path, query or fragment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct BotUrl(String);
 
@@ -139,7 +151,7 @@ impl BotUrl {
         }
         let allowed = match scheme {
             "https" => tailnet_host(host),
-            "http" => host == "127.0.0.1" || host == "localhost",
+            "http" => host == "127.0.0.1" || host == "localhost" || private_ipv4(host),
             _ => false,
         };
         if !allowed {
@@ -156,6 +168,26 @@ impl BotUrl {
 fn valid_port(port: &str) -> bool {
     port.bytes().all(|byte| byte.is_ascii_digit())
         && port.parse::<u16>().is_ok_and(|number| number > 0)
+}
+
+/// Four plain decimal octets (no leading zeros, so no octal reading) in 10/8, 172.16/12 or
+/// 192.168/16. Names, IPv6 and whole-number forms never match.
+fn private_ipv4(host: &str) -> bool {
+    let octets: Vec<u8> = host
+        .split('.')
+        .map(|part| {
+            let plain = !part.is_empty()
+                && part.len() <= 3
+                && part.bytes().all(|byte| byte.is_ascii_digit())
+                && (part.len() == 1 || !part.starts_with('0'));
+            if plain { part.parse().ok() } else { None }
+        })
+        .collect::<Option<_>>()
+        .unwrap_or_default();
+    matches!(
+        octets[..],
+        [10, _, _, _] | [172, 16..=31, _, _] | [192, 168, _, _]
+    )
 }
 
 /// Only letters, digits and hyphens in each label, so nothing like `@`, `/` or `%` gets through.
@@ -278,6 +310,75 @@ impl PendingLink {
     }
 }
 
+#[derive(Deserialize)]
+struct LocalPort {
+    version: u32,
+    puerto: u16,
+}
+
+/// The folder where the bot keeps its token: `$XDG_CONFIG_HOME` if it is an absolute path, else
+/// `~/.config`. `None` on Android and Windows, where the bot is never on the same computer.
+pub(crate) fn local_bot_folder() -> Option<PathBuf> {
+    if !cfg!(unix) || cfg!(target_os = "android") {
+        return None;
+    }
+    bot_folder_in(
+        std::env::var_os("XDG_CONFIG_HOME"),
+        std::env::var_os("HOME"),
+    )
+}
+
+fn bot_folder_in(xdg_config_home: Option<OsString>, home: Option<OsString>) -> Option<PathBuf> {
+    let absolute =
+        |value: Option<OsString>| value.map(PathBuf::from).filter(|path| path.is_absolute());
+    let config =
+        absolute(xdg_config_home).or_else(|| absolute(home).map(|home| home.join(".config")))?;
+    Some(config.join(LOCAL_BOT_FOLDER))
+}
+
+fn read_small(path: &Path) -> Result<Option<Vec<u8>>, BotError> {
+    let file = match fs::File::open(path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(BotError::Disk {
+                action: "leer",
+                source: error,
+            });
+        }
+    };
+    let mut bytes = Vec::new();
+    file.take(MAX_LOCAL_FILE_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|source| BotError::Disk {
+            action: "leer",
+            source,
+        })?;
+    if bytes.len() as u64 > MAX_LOCAL_FILE_BYTES {
+        return Err(BotError::InvalidLocalBot);
+    }
+    Ok(Some(bytes))
+}
+
+/// The bot of this computer, from its token and `conexion.json` in `folder`. `None` if either file
+/// is missing; invalid contents fail without quoting them (the token is in there).
+fn read_local_bot(folder: &Path) -> Result<Option<(BotUrl, BotToken)>, BotError> {
+    let (Some(token), Some(port)) = (
+        read_small(&folder.join(LOCAL_TOKEN_FILE))?,
+        read_small(&folder.join(LOCAL_PORT_FILE))?,
+    ) else {
+        return Ok(None);
+    };
+    let token = std::str::from_utf8(&token).map_err(|_| BotError::InvalidLocalBot)?;
+    let token = BotToken::parse(token).map_err(|_| BotError::InvalidLocalBot)?;
+    let port: LocalPort = serde_json::from_slice(&port).map_err(|_| BotError::InvalidLocalBot)?;
+    if port.version != 1 || port.puerto == 0 {
+        return Err(BotError::InvalidLocalBot);
+    }
+    let url = BotUrl::parse(&format!("http://127.0.0.1:{}", port.puerto))?;
+    Ok(Some((url, token)))
+}
+
 struct Connection {
     url: BotUrl,
     token: BotToken,
@@ -362,6 +463,19 @@ impl ConnectionStore {
     pub(crate) fn connect_link(&self, link: ConnectionLink) -> Result<BotConnectionUi, BotError> {
         let _guard = self.guard();
         self.save_enabled(link.url, link.token)
+    }
+
+    /// Connects to the bot of this computer from its own files, only if nothing is saved yet.
+    /// `None` when something is saved or the bot left nothing in `folder`.
+    pub(crate) fn connect_local(&self, folder: &Path) -> Result<Option<BotConnectionUi>, BotError> {
+        let _guard = self.guard();
+        if self.read()?.is_some() {
+            return Ok(None);
+        }
+        let Some((url, token)) = read_local_bot(folder)? else {
+            return Ok(None);
+        };
+        self.save_enabled(url, token).map(Some)
     }
 
     /// Fails while a connection is enabled: a link from another app never replaces it.
@@ -748,6 +862,10 @@ mod tests {
             ),
             ("http://127.0.0.1:8787", "http://127.0.0.1:8787"),
             ("http://localhost:8787/", "http://localhost:8787"),
+            ("http://192.168.1.10:8787", "http://192.168.1.10:8787"),
+            ("http://10.0.0.5", "http://10.0.0.5"),
+            ("http://172.16.0.1:9/", "http://172.16.0.1:9"),
+            ("http://172.31.255.254", "http://172.31.255.254"),
         ] {
             assert_eq!(
                 BotUrl::parse(typed).unwrap().as_str(),
@@ -786,8 +904,33 @@ mod tests {
             "https://equipo.red.ts.net:",
             "https://127.0.0.1:8787",
             "http://127.0.0.2:8787",
-            "http://192.168.1.10:8787",
             "http://localhost.example.com",
+            "http://8.8.8.8:8787",
+            "http://172.15.0.1",
+            "http://172.32.0.1",
+            "http://192.169.1.1",
+            "http://11.0.0.1",
+            "http://192.168.1.1@8.8.8.8",
+            "http://8.8.8.8@192.168.1.1",
+            "http://user@192.168.1.10:8787",
+            "http://192.168.1.10/ruta",
+            "http://192.168.1.10:8787/x",
+            "http://192.168.01.10",
+            "http://192.168.1.010",
+            "http://010.0.0.1",
+            "http://0300.168.1.1",
+            "http://0xc0.168.1.1",
+            "http://3232235786",
+            "http://192.168.266.1",
+            "http://192.168.1",
+            "http://192.168.1.1.1",
+            "http://192.168.1.",
+            "http://192.168.1.10:0",
+            "http://192.168.1.10:",
+            "http://[::ffff:192.168.1.10]:8787",
+            "http://[fe80::1]",
+            "https://192.168.1.10:8787",
+            "http://192.168.1.10.nip.io",
             "http://[::1]:8787",
             "ftp://localhost",
             "https://équipo.red.ts.net",
@@ -799,6 +942,109 @@ mod tests {
         }
         let long = format!("https://{}.ts.net", "a".repeat(300));
         assert!(BotUrl::parse(&long).is_err());
+    }
+
+    fn local_folder(port_file: &str) -> tempfile::TempDir {
+        let folder = tempfile::tempdir().unwrap();
+        fs::write(folder.path().join(LOCAL_TOKEN_FILE), format!("{TOKEN}\n")).unwrap();
+        fs::write(folder.path().join(LOCAL_PORT_FILE), port_file).unwrap();
+        folder
+    }
+
+    #[test]
+    fn connects_to_the_local_bot_from_its_files() {
+        let local = local_folder(r#"{"version":1,"puerto":9001}"#);
+        let data = tempfile::tempdir().unwrap();
+        let store = ConnectionStore::new(data.path().join(CONNECTION_FILE));
+
+        let saved = store.connect_local(local.path()).unwrap().unwrap();
+
+        assert_eq!(saved.url.as_deref(), Some("http://127.0.0.1:9001"));
+        assert!(saved.enabled && saved.has_token);
+        assert!(!serde_json::to_string(&saved).unwrap().contains(TOKEN));
+        assert!(store.client().is_ok());
+    }
+
+    #[test]
+    fn the_local_bot_never_replaces_a_saved_connection() {
+        let local = local_folder(r#"{"version":1,"puerto":9001}"#);
+        let data = tempfile::tempdir().unwrap();
+        let store = ConnectionStore::new(data.path().join(CONNECTION_FILE));
+        store
+            .connect("https://equipo.red.ts.net", Some(OTHER_TOKEN))
+            .unwrap();
+        store.disable().unwrap();
+
+        assert_eq!(store.connect_local(local.path()).unwrap(), None);
+
+        assert_eq!(
+            store.summary().unwrap().url.as_deref(),
+            Some("https://equipo.red.ts.net")
+        );
+    }
+
+    #[test]
+    fn without_local_files_nothing_is_saved() {
+        let data = tempfile::tempdir().unwrap();
+        let store = ConnectionStore::new(data.path().join(CONNECTION_FILE));
+        let empty = tempfile::tempdir().unwrap();
+        assert_eq!(store.connect_local(empty.path()).unwrap(), None);
+        assert_eq!(
+            store.connect_local(&empty.path().join("falta")).unwrap(),
+            None
+        );
+        // Only the token, without the port file.
+        fs::write(empty.path().join(LOCAL_TOKEN_FILE), TOKEN).unwrap();
+        assert_eq!(store.connect_local(empty.path()).unwrap(), None);
+        assert_eq!(store.summary().unwrap(), BotConnectionUi::default());
+    }
+
+    #[test]
+    fn invalid_local_files_are_refused_without_quoting_them() {
+        for port_file in [
+            "no es json",
+            r#"{"version":2,"puerto":9001}"#,
+            r#"{"version":1,"puerto":0}"#,
+            r#"{"version":1,"puerto":70000}"#,
+            r#"{"version":1}"#,
+            r#"{"version":1,"puerto":"9001"}"#,
+        ] {
+            let local = local_folder(port_file);
+            let data = tempfile::tempdir().unwrap();
+            let store = ConnectionStore::new(data.path().join(CONNECTION_FILE));
+            let error = store.connect_local(local.path()).unwrap_err();
+            assert!(matches!(error, BotError::InvalidLocalBot), "{port_file}");
+            assert_eq!(store.summary().unwrap(), BotConnectionUi::default());
+        }
+        let local = local_folder(r#"{"version":1,"puerto":9001}"#);
+        fs::write(local.path().join(LOCAL_TOKEN_FILE), "corto").unwrap();
+        let data = tempfile::tempdir().unwrap();
+        let store = ConnectionStore::new(data.path().join(CONNECTION_FILE));
+        let error = store.connect_local(local.path()).unwrap_err();
+        assert!(matches!(error, BotError::InvalidLocalBot));
+        assert!(!error.to_string().contains("corto"));
+        fs::write(local.path().join(LOCAL_TOKEN_FILE), "x".repeat(5000)).unwrap();
+        assert!(store.connect_local(local.path()).is_err());
+    }
+
+    #[test]
+    fn the_local_folder_follows_xdg_config_home_only_if_absolute() {
+        let os = |text: &str| Some(OsString::from(text));
+        let expected = |text: &str| Some(PathBuf::from(text));
+        assert_eq!(
+            bot_folder_in(os("/tmp/cfg"), os("/home/a")),
+            expected("/tmp/cfg/bot-stickers-sonido")
+        );
+        assert_eq!(
+            bot_folder_in(os("relativo"), os("/home/a")),
+            expected("/home/a/.config/bot-stickers-sonido")
+        );
+        assert_eq!(
+            bot_folder_in(None, os("/home/a")),
+            expected("/home/a/.config/bot-stickers-sonido")
+        );
+        assert_eq!(bot_folder_in(None, os("relativo")), None);
+        assert_eq!(bot_folder_in(None, None), None);
     }
 
     #[test]

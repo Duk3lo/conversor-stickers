@@ -10,6 +10,7 @@ import {
   defaultCountry,
   installExtension,
   loadExtensions,
+  canRemoveExtension,
   removeExtension,
   saveExtensions,
 } from "./extensions.ts";
@@ -69,7 +70,7 @@ export function createExtensionsSection(bot: BotPanelDependencies): void {
       holdBotNumber();
       box.append(botPanel);
     }
-    box.append(remove);
+    if (canRemoveExtension(extension.id)) box.append(remove);
     return box;
   }
 

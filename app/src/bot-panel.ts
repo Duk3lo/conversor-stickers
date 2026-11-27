@@ -3,7 +3,7 @@
 import type { BotLinkMethod } from "./contract-bot.ts";
 import { asErrorUi } from "./contract.ts";
 import type { BotMonitor } from "./bot-monitor.ts";
-import { type BotState, botActions, botEnabled, botNotice, defaultBotUrl, describeBot, phoneFieldVisible, qrNoteText, submitLink } from "./bot-status.ts";
+import { type BotState, botActions, botEnabled, botNotice, describeBot, phoneFieldVisible, qrNoteText, shouldConnectLocal, submitLink } from "./bot-status.ts";
 import { create, showMessage } from "./dom.ts";
 import { errorMessage } from "./messages.ts";
 import type { Platform } from "./mobile.ts";
@@ -93,17 +93,13 @@ export function createBotPanel({ monitor, platform, openWhatsapp }: BotPanelDepe
 
   const linkForm = create("form", "bot-form");
   linkForm.noValidate = true;
-  const connectionLink = field("bot-connection-link", "Enlace de conexión del bot", "password");
-  const connectionLinkHint = create(
-    "p",
-    "secondary small",
-    "Es el enlace que empieza por conversorstickers://bot# y que muestra el bot. Se guarda en esta app y no se vuelve a mostrar.",
-  );
-  connectionLinkHint.id = "bot-connection-link-hint";
-  connectionLink.input.setAttribute("aria-describedby", connectionLinkHint.id);
+  const linkIntro = create("p", "", "Escanea con la cámara el QR que muestra tu bot al arrancar, o pega su enlace.");
+  linkIntro.id = "bot-connection-link-intro";
+  const connectionLink = field("bot-connection-link", "Enlace del bot", "password");
+  connectionLink.input.setAttribute("aria-describedby", linkIntro.id);
   const connectLink = create("button", "button-main", "Conectar");
   connectLink.type = "submit";
-  linkForm.append(connectionLink.label, connectionLink.input, connectionLinkHint, connectLink);
+  linkForm.append(linkIntro, connectionLink.label, connectionLink.input, connectLink);
 
   const advanced = create("details", "bot-advanced");
   const advancedTitle = create("summary", "", "Opciones avanzadas");
@@ -119,9 +115,9 @@ export function createBotPanel({ monitor, platform, openWhatsapp }: BotPanelDepe
   const connect = create("button", "button-secondary", "Conectar con estos datos");
   connect.type = "submit";
   form.append(url.label, url.input, token.label, token.input, tokenHint, connect);
-  advanced.append(advancedTitle, form);
   const disable = button("button-secondary", "Deshabilitar");
   const disableHint = create("p", "secondary small", "«Deshabilitar» solo desconecta esta app: no desvincula ni cambia el bot.");
+  const unlink = button("button-text button-text-danger", "Desvincular…");
 
   const status = create("p", "bot-state");
   status.setAttribute("role", "status");
@@ -136,14 +132,13 @@ export function createBotPanel({ monitor, platform, openWhatsapp }: BotPanelDepe
   const pause = button("button-secondary", "Pausar");
   const linkCode = button("button-secondary", "Vincular con código");
   const linkQr = button("button-secondary", "Vincular con QR");
-  const unlink = button("button-text button-text-danger", "Desvincular…");
-  actions.append(activate, pause, linkCode, linkQr, unlink);
+  actions.append(activate, pause, linkCode, linkQr);
 
   const phoneBox = create("div", "bot-form");
-  const phone = field("bot-pair-phone", "Número del WhatsApp a vincular (para el código)", "tel");
+  const phone = field("bot-pair-phone", "Número del WhatsApp a vincular", "tel");
   phone.input.inputMode = "tel";
   phone.input.placeholder = "+34 612 345 678";
-  const phoneHint = create("p", "secondary small", "Con código de país. Se envía a tu bot solo para pedir el código; la app no lo guarda.");
+  const phoneHint = create("p", "secondary small", "Con código de país. La app no lo guarda.");
   phoneHint.id = "bot-pair-phone-hint";
   phone.input.setAttribute("aria-describedby", phoneHint.id);
   phoneBox.append(phone.label, phone.input, phoneHint);
@@ -176,12 +171,16 @@ export function createBotPanel({ monitor, platform, openWhatsapp }: BotPanelDepe
   const qrNote = create("p", "small");
   pairing.append(pairingNote, steps, codeBox, qrNote, qrBox);
 
-  panel.append(title, linkForm, advanced, disable, disableHint, status, notice, phoneBox, actions, confirmation, pairing, failure);
+  advanced.append(advancedTitle, form, disable, disableHint, unlink, confirmation);
+  panel.append(title, status, notice, linkForm, phoneBox, actions, pairing, advanced, failure);
 
   let busy = false;
   let drawnQr: string | null = null;
   let shownSteps: BotLinkMethod | null = null;
   let filledUrl: string | null | undefined;
+  let visible = false;
+  let triedLocal = false;
+  let shownEnabled: boolean | null = null;
 
   function showPairing(state: BotState): void {
     const current = botEnabled(state) && state.status?.link === "linking" ? state.status : null;
@@ -215,13 +214,20 @@ export function createBotPanel({ monitor, platform, openWhatsapp }: BotPanelDepe
 
   function render(state: BotState): void {
     const enabled = botEnabled(state);
+    if (enabled !== shownEnabled) {
+      if (shownEnabled !== null) advanced.open = false;
+      shownEnabled = enabled;
+    }
     const saved = state.connection?.url ?? null;
     if (saved !== filledUrl) {
       filledUrl = saved;
-      url.input.value = saved ?? defaultBotUrl(platform);
+      url.input.value = saved ?? "";
     }
     url.input.readOnly = enabled;
     linkForm.hidden = enabled;
+    // Nothing saved: only the link is offered.
+    advanced.hidden = saved === null;
+    status.hidden = !enabled;
     for (const node of [token.label, token.input, tokenHint, connect]) node.hidden = enabled;
     disable.hidden = !enabled;
     disableHint.hidden = !enabled;
@@ -236,7 +242,7 @@ export function createBotPanel({ monitor, platform, openWhatsapp }: BotPanelDepe
     setText(status, description.text);
     status.dataset["kind"] = description.kind;
     const noticeText = botNotice(state);
-    notice.hidden = noticeText === null;
+    notice.hidden = !enabled || noticeText === null;
     setText(notice, noticeText ?? "");
 
     const available = botActions(state);
@@ -250,6 +256,10 @@ export function createBotPanel({ monitor, platform, openWhatsapp }: BotPanelDepe
     if (!available.unlink) confirmation.hidden = true;
     for (const node of [connectLink, connect, disable, activate, pause, linkCode, linkQr, unlink, confirmUnlink]) node.disabled = busy;
     showPairing(state);
+    if (!triedLocal && shouldConnectLocal(platform, state, visible)) {
+      triedLocal = true;
+      void attempt(() => monitor.connectLocal());
+    }
   }
 
   async function attempt(work: () => Promise<unknown>): Promise<void> {
@@ -259,6 +269,7 @@ export function createBotPanel({ monitor, platform, openWhatsapp }: BotPanelDepe
     render(monitor.state());
     try {
       await work();
+      showMessage(failure, null);
     } catch (error) {
       showMessage(failure, error instanceof Error ? error.message : errorMessage(asErrorUi(error)));
     } finally {
@@ -285,6 +296,10 @@ export function createBotPanel({ monitor, platform, openWhatsapp }: BotPanelDepe
       token.input.value = "";
     });
   });
+  new IntersectionObserver((entries) => {
+    visible = entries[entries.length - 1]?.isIntersecting ?? visible;
+    render(monitor.state());
+  }).observe(panel);
   disable.addEventListener("click", () => void attempt(() => monitor.disable()));
   activate.addEventListener("click", () => void attempt(() => monitor.run((api) => api.activate())));
   pause.addEventListener("click", () => void attempt(() => monitor.run((api) => api.pause())));

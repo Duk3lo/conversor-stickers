@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, State};
 
-use crate::bot::{BotClient, BotError, ConnectionLink, ConnectionStore, PendingLink};
+use crate::bot::{self, BotClient, BotError, ConnectionLink, ConnectionStore, PendingLink};
 use crate::commands::in_background;
 use crate::contract::{UiError, UiErrorKind};
 use crate::contract_bot::{BotConnectionUi, BotStatusUi, LinkMethod};
@@ -47,6 +47,21 @@ pub(crate) async fn bot_connect_link(
 ) -> Result<BotConnectionUi, UiError> {
     let store = Arc::clone(&store);
     in_background(move || Ok(store.connect_link(ConnectionLink::parse(&link)?)?)).await
+}
+
+/// Desktop (Linux and macOS): with nothing saved, connects to the bot of this same computer from
+/// the token and port it left in its config folder. The token never reaches the interface; `None`
+/// means there was nothing to do.
+#[tauri::command]
+pub(crate) async fn bot_connect_local(
+    store: Store<'_>,
+) -> Result<Option<BotConnectionUi>, UiError> {
+    let store = Arc::clone(&store);
+    in_background(move || match bot::local_bot_folder() {
+        Some(folder) => Ok(store.connect_local(&folder)?),
+        None => Ok(None),
+    })
+    .await
 }
 
 /// Android: collects the link another app opened (the camera scanning the bot's QR) and keeps it

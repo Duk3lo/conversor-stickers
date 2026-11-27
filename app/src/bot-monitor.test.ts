@@ -19,6 +19,7 @@ function setup(overrides: Partial<BotApi> = {}) {
     connection: async () => connection,
     connect: async () => connection,
     connectLink: async () => connection,
+    connectLocal: async () => null,
     receiveLink: async () => null,
     acceptLink: async () => connection,
     rejectLink: async () => undefined,
@@ -164,4 +165,22 @@ test("a connection that cannot be read is an error, not silence", async () => {
   const { monitor } = setup({ connection: () => Promise.reject({ kind: "other", message: "archivo dañado" }) });
   await monitor.load();
   assert.equal(monitor.state().error?.message, "archivo dañado");
+});
+
+test("the local bot becomes the connection, and nothing found leaves the state as it was", async () => {
+  const none = setup();
+  await none.monitor.load();
+  await none.monitor.connectLocal();
+  assert.deepEqual(none.monitor.state().connection, connection);
+
+  const empty = { url: null, has_token: false, enabled: false };
+  const found = setup({ connection: async () => empty, connectLocal: async () => connection });
+  await found.monitor.load();
+  await found.monitor.connectLocal();
+  assert.deepEqual(found.monitor.state().connection, connection);
+
+  const absent = setup({ connection: async () => empty });
+  await absent.monitor.load();
+  await absent.monitor.connectLocal();
+  assert.deepEqual(absent.monitor.state().connection, empty);
 });
