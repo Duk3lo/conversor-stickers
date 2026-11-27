@@ -60,7 +60,7 @@ test("resetting to easy reports nothing when the settings are already the defaul
 });
 
 test("resetting to easy restores the defaults and says it changed", () => {
-  const reset = easyReset({ speed: 2, priority: "sharpness", fps: 24, framing: { ...DEFAULT_FRAMING, zoom: 2 }, sidePx: 256 });
+  const reset = easyReset({ speed: 2, priority: "sharpness", fps: 24, framing: DEFAULT_FRAMING, sidePx: 256 });
   assert.equal(reset.changed, true);
   assert.deepEqual(reset.settings, EASY_DEFAULTS);
 });
@@ -111,4 +111,10 @@ test("the summary says what was changed", () => {
     "Se bajó la calidad para que quepa.",
   );
   assert.equal(easySummary(before, before, false), null);
+});
+
+test("going back to easy keeps how the video is framed", () => {
+  const framing = { ...DEFAULT_FRAMING, mode: "fit" as const, zoom: 2, center_x: 0.4, shape: "circle" as const };
+  const reset = easyReset({ ...EASY_DEFAULTS, framing });
+  assert.deepEqual(reset.settings.framing, { ...DEFAULT_FRAMING, mode: "fit", zoom: 2, center_x: 0.4 });
 });

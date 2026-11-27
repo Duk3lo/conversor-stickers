@@ -92,6 +92,12 @@ export interface StaticRequest {
   framing: FramingSpecUi;
 }
 
+export interface ImagesGifRequest {
+  ids: number[];
+  image_s: number;
+  repeat: boolean;
+}
+
 export interface EstimateUi {
   estimated_size_bytes: number;
   max_size_bytes: number;
@@ -201,7 +207,9 @@ export type UiErrorKind =
   | "cancelled"
   | "busy"
   | "other"
-  | "invalid_pack";
+  | "invalid_pack"
+  | "bot_unreachable"
+  | "bot_unauthorized";
 
 export interface UiError {
   kind: UiErrorKind;
@@ -223,6 +231,8 @@ const ERROR_KINDS: readonly UiErrorKind[] = [
   "busy",
   "other",
   "invalid_pack",
+  "bot_unreachable",
+  "bot_unauthorized",
 ];
 
 export function asErrorUi(failure: unknown): UiError {
@@ -318,12 +328,22 @@ export function timelineThumbnails(id: number, count: number): Promise<string[]>
   return call("timeline_thumbnails", { id, count });
 }
 
+/** Local path of the frame at `atS` with the video's own aspect ratio (longer side up to 640 px). */
+export function videoStill(id: number, atS: number): Promise<string> {
+  return call("video_still", { id, atS });
+}
+
 export function estimate(request: CreateRequest): Promise<EstimateUi> {
   return call("estimate", { request });
 }
 
 export function createStatic(request: StaticRequest): Promise<CreateResult> {
   return call("create_static", { request });
+}
+
+/** Returns the size of the GIF; its bytes are read with `result(ids[0])`. */
+export function createImagesGif(request: ImagesGifRequest): Promise<number> {
+  return call("create_images_gif", { request });
 }
 
 export function result(id: number): Promise<ArrayBuffer> {

@@ -13,6 +13,7 @@ mod encoding;
 mod error;
 mod framing_spec;
 mod image;
+mod images_gif;
 mod options;
 mod palette;
 mod preset;
@@ -54,6 +55,9 @@ pub use framing_spec::{Align, Background, FramingMode, FramingSpec, MAX_ZOOM, MI
 pub use image::{
     IMAGE_PRESETS, ImagePreset, ImageReport, RgbaImage, WHATSAPP_STATIC_STICKER, convert_image,
     find_image_preset,
+};
+pub use images_gif::{
+    DEFAULT_GIF_SIDE, ImagesGifError, MAX_GIF_IMAGES, MAX_IMAGE_MS, MIN_IMAGE_MS, encode_images_gif,
 };
 pub use options::{ConversionOptions, ConversionParams, Fps, MaxSize, Priority, Speed};
 pub use preset::{

@@ -49,6 +49,11 @@ export function sendToBot(number: string, caption: string | null): Promise<void>
   return call("send_to_bot", { number, caption });
 }
 
+/** Opens a web address in the system browser. Rust only accepts `https` addresses of known sites. */
+export function openExternal(url: string): Promise<void> {
+  return call("open_external", { url });
+}
+
 export function openWhatsapp(): Promise<void> {
   return call("open_whatsapp");
 }

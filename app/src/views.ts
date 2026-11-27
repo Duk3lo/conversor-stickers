@@ -8,6 +8,8 @@ import type { GifProvider, GifProviderUi, StickerKlipyUi } from "./contract-gifs
 import type { KlipyRow } from "./klipy.ts";
 import type { Queue } from "./queue.ts";
 import type { Saving } from "./saving.ts";
+import type { BotSendState } from "./bot-send.ts";
+import type { BotState } from "./bot-status.ts";
 import type { ClipVideoState } from "./clip-video.ts";
 import type { SoundState } from "./sound.ts";
 import type { InstalledExtension } from "./extensions.ts";
@@ -138,12 +140,16 @@ export interface EditorView {
   readonly clipRange: ClipRange | null;
   readonly speed: number;
   readonly fitting: string | null;
+  /** Says that a released drag went back to the original range. */
+  readonly clipNote: string | null;
   readonly priority: PriorityUi;
   readonly fps: number | null;
   readonly framing: FramingSpecUi;
   readonly sidePx: number | null;
   /** Small frames spread over the whole video, for the clip bar. */
   readonly thumbnails: readonly string[];
+  /** Whole frame at the start of the clip, in the video's proportion; only without video playback. */
+  readonly still: string | null;
   readonly fitPending: boolean;
   readonly mode: EditorMode;
   /** «Crear sticker» of the easy mode is adjusting and about to create. */
@@ -156,6 +162,9 @@ export interface EditorView {
   readonly clipVideo: ClipVideoState;
   /** The installed extensions, as the settings left them when the editor opened. */
   readonly extensions: readonly InstalledExtension[];
+  /** The user's bot; `null` in `play`, which has none. */
+  readonly bot: BotState | null;
+  readonly botSend: BotSendState;
   readonly packs: {
     readonly open: DestinationPack | null;
     readonly compatible: readonly DestinationPack[];
@@ -168,7 +177,10 @@ export interface EditorActions {
   moveStart(seconds: number): void;
   moveEnd(seconds: number): void;
   moveRange(startS: number): void;
-  fitToTime(): void;
+  pickDuration(seconds: number): void;
+  autoFit(): void;
+  /** A pointer drag on a clip bar ended; `before` is the range it started from. */
+  releaseDrag(before: ClipRange, marginS: number): void;
   pickSide(side: number | null): void;
   changeSpeed(speed: number): void;
   fitMax(): void;
@@ -185,6 +197,8 @@ export interface EditorActions {
   openFolder(folder: SavedFolder): void;
   openWhatsapp(): void;
   sendToExtension(id: string): void;
+  openBotPanel(): void;
+  sendToBot(): void;
   share(): void;
   sendToWhatsapp(): void;
   addPack(id: number): void;
@@ -201,14 +215,28 @@ export interface CreatedGif {
   readonly saveError: string | null;
 }
 
+export interface ChosenImages {
+  readonly ids: readonly number[];
+  readonly imageSeconds: number;
+  readonly repeat: boolean;
+  readonly creating: boolean;
+}
+
 export interface GifsView {
   readonly choosing: boolean;
+  readonly choosingImages: boolean;
+  readonly images: ChosenImages | null;
   readonly error: string | null;
   readonly created: readonly CreatedGif[];
 }
 
 export interface GifsActions {
   pickVideo(): void;
+  pickImages(): void;
+  setImageSeconds(seconds: number): void;
+  setRepeat(repeat: boolean): void;
+  createFromImages(): void;
+  discardImages(): void;
   save(entry: number): void;
 }
 

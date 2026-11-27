@@ -1,0 +1,7 @@
+{
+  "connection": { "url": "https://equipo.red-ejemplo.ts.net", "has_token": true, "enabled": true },
+  "without_connection": { "url": null, "has_token": false, "enabled": false },
+  "linking": { "link": "linking", "connection": "connecting", "active": false, "code": "ABCD-EFGH", "qr": null, "notice": null },
+  "active": { "link": "linked", "connection": "connected", "active": true, "code": null, "qr": null, "notice": "Aviso del bot" },
+  "link_methods": ["code", "qr"]
+}

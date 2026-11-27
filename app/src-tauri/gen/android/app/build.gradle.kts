@@ -57,6 +57,8 @@ android {
     }
     buildTypes {
         getByName("debug") {
+            applicationIdSuffix = ".prueba"
+            // The test build installs next to the published app instead of replacing it (and its data).
             manifestPlaceholders["usesCleartextTraffic"] = "true"
             isDebuggable = true
             isJniDebuggable = true

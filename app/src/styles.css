@@ -927,6 +927,25 @@ textarea::placeholder {
   background: var(--surface);
 }
 
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+}
+
+.bgif-settings input[type="range"] {
+  width: 100%;
+  min-height: 44px;
+}
+
 .bgif-settings .field {
   align-self: stretch;
 }
@@ -1325,6 +1344,25 @@ textarea::placeholder {
   display: none;
 }
 
+.preview[data-media="video"][data-still="true"] video {
+  display: none;
+}
+
+.preview[data-media="video"][data-still="true"][data-state="ready"] img {
+  display: block;
+}
+
+/* Same dimming as the box-shadow over a <video> (55 % black), done without the huge shadow. */
+.preview[data-dim="true"] img {
+  filter: brightness(0.45);
+}
+
+.preview[data-dim="true"] .framing-square {
+  box-shadow: none;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+}
+
 .preview[data-media="image"] {
   background: var(--board);
 }
@@ -1486,6 +1524,39 @@ textarea::placeholder {
 
 .crop-handle:focus-visible {
   outline-offset: 3px;
+}
+
+.crop-zoom {
+  display: flex;
+  flex-direction: column;
+}
+
+.crop-zoom[hidden] {
+  display: none;
+}
+
+.crop-zoom-ends {
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+
+.crop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px -8px;
+}
+
+.crop-actions button {
+  flex: 1 1 auto;
+  justify-content: center;
+  min-height: var(--touch);
+}
+
+.crop-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .crop[aria-disabled="true"] .crop-track {
@@ -2230,6 +2301,24 @@ input[type="range"] {
     column-gap: 12px;
   }
 
+  .app {
+    position: relative;
+  }
+
+  /* The icon shares the line of the section title instead of taking its own row. */
+  .header {
+    position: absolute;
+    top: 20px;
+    right: max(16px, env(safe-area-inset-right));
+    padding: 0;
+  }
+
+  .panel > h2:first-child,
+  .panel > .stack > h2:first-child,
+  .panel > .stack > .title-row:first-child {
+    padding-right: 44px;
+  }
+
   .header h1,
   .bar-destination-text {
     display: none;
@@ -2501,16 +2590,6 @@ a {
   gap: 4px;
 }
 
-.community-propose {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 0 16px;
-  text-decoration: none;
-}
-
 .community-top {
   display: flex;
   flex-direction: column;
@@ -2648,11 +2727,6 @@ a {
   color: var(--text-secondary);
 }
 
-#fit-time {
-  min-height: var(--touch);
-  align-self: stretch;
-}
-
 .custom-number {
   display: flex;
   align-items: center;
@@ -2679,8 +2753,106 @@ a {
   border-top: 1px solid var(--border-control);
 }
 
-.extension-card input[type="text"] {
-  width: 12em;
+.extension-number {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 22em;
+}
+
+.extension-number input,
+.extension-number select {
+  width: 100%;
+  min-width: 0;
+}
+
+.extension-number input:read-only {
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.extension-number button {
+  align-self: flex-start;
+}
+
+.bot-panel,
+.bot-box,
+.bot-form,
+.bot-pairing {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bot-panel {
+  max-width: 28em;
+  padding-top: 8px;
+  scroll-margin-top: 16px;
+}
+
+.bot-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--touch);
+  padding: 0 12px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radio);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.bot-form input:read-only {
+  color: var(--text-secondary);
+}
+
+.bot-form button,
+.bot-box > .button-small {
+  align-self: flex-start;
+}
+
+.bot-advanced > summary {
+  min-height: var(--touch);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.bot-advanced[open] > .bot-form {
+  padding-bottom: 8px;
+}
+
+.bot-state {
+  font-weight: 600;
+}
+
+.bot-steps {
+  margin: 0;
+  padding-left: 1.5em;
+}
+
+.bot-code-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bot-code {
+  width: 100%;
+  font-family: monospace;
+  font-size: 1.75rem;
+  letter-spacing: 0.1em;
+  user-select: all;
+}
+
+.bot-qr-image {
+  width: min(100%, 18em);
+  height: auto;
+}
+
+#bot-caption {
+  user-select: all;
 }
 
 .custom-number input[aria-invalid="true"] {
@@ -2797,12 +2969,33 @@ input:focus-visible {
   height: 1.5rem;
 }
 
-.edition-badge {
-  padding: 2px 8px;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  color: var(--accent-strong);
-  background: var(--accent-soft);
-  font-size: 0.75rem;
-  font-weight: 700;
+.bot-dialog {
+  width: min(32rem, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 16px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--surface-hover);
+  border-radius: 12px;
+}
+
+.bot-dialog::backdrop {
+  background: rgb(0 0 0 / 0.65);
+}
+
+/* Two fingers on the video pinch the crop instead of zooming or scrolling the page. */
+[data-framing="crop"] {
+  touch-action: none;
+}
+
+/* In a carousel a single pack card fills the width instead of leaving half of it empty. */
+@media (max-width: 560px) {
+  .lane-list > li:only-child {
+    flex: 1 1 auto;
+  }
+
+  .lane-list > li:only-child .card {
+    width: 100%;
+  }
 }

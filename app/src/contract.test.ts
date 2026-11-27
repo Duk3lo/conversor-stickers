@@ -16,6 +16,7 @@ import {
   type Origin,
   type CreatedPack,
   type CreateRequest,
+  type ImagesGifRequest,
   type StaticRequest,
   type PresetUi,
   type PriorityUi,
@@ -53,6 +54,7 @@ const examples: {
   save_video_writing_event: SaveVideoEvent;
   create_request: CreateRequest;
   origins: Origin[];
+  images_gif_request: ImagesGifRequest;
   static_request: StaticRequest;
   framings: FramingModeUi[];
   estimate_ui: EstimateUi;
@@ -109,6 +111,7 @@ const examples: {
   save_video_writing_event: { kind: "writing" },
   create_request: {id: 1, preset: "discord-gif", start_s: 3.2, seconds: 6.0, speed: 1.5, priority: "smoothness", fps: 24, framing: {mode: "fit", center_x: 0.25, center_y: 0.5, zoom: 2.0, background: {kind: "blur"}, shape: "circle", scale: 0.8, align: "top"}, side_px: 320},
   origins: ["file", "link", "pasted"],
+  images_gif_request: {ids: [3, 1, 2], image_s: 0.5, repeat: true},
   static_request: {id: 5, framing: {mode: "fit", center_x: 0.5, center_y: 0.5, zoom: 1.0, background: {kind: "color", rgb: "#ffcc00"}, shape: "rounded", scale: 1.0, align: "bottom"}},
   framings: ["crop", "fit"],
   estimate_ui: {estimated_size_bytes: 380000, max_size_bytes: 500000, fits: true, fps: 15, max_seconds_s: 6.5, detail_px: 384, max_range_s: 6.5},
@@ -242,6 +245,8 @@ const examples: {
     "busy",
     "other",
     "invalid_pack",
+    "bot_unreachable",
+    "bot_unauthorized",
   ],
 };
 

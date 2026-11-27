@@ -3,6 +3,10 @@ import { createKlipySection, type KlipySection } from "./klipy-section.ts";
 import { createCatalogSection, type CatalogSection } from "./catalog-section.ts";
 import { createBackupSection } from "./backup-section.ts";
 import { createExtensionsSection } from "./extensions-section.ts";
+import { createBotMonitor } from "./bot-monitor.ts";
+import type { BotState } from "./bot-status.ts";
+import { builtinExtension } from "./extensions.ts";
+import { createBotDemoApi } from "./demo-bot.ts";
 import { createDetailSection, type DetailSection } from "./detail-section.ts";
 import { createFavoritesSection, type FavoritesSection } from "./favorites-section.ts";
 import { platform } from "./platform.ts";
@@ -181,11 +185,13 @@ export async function startDemo(initial: string | null): Promise<void> {
     clipRange: { start: 0.4, end: 1.9 },
     speed: 1,
     fitting: null,
+    clipNote: null,
     priority: "balance",
     fps: null,
     framing: DEFAULT_FRAMING,
     sidePx: null,
     thumbnails: demoThumbnails,
+    still: photo,
     fitPending: false,
     mode: "advanced",
     preparing: false,
@@ -198,8 +204,20 @@ export async function startDemo(initial: string | null): Promise<void> {
     sound: { kind: "idle" },
     clipVideo: { kind: "idle" },
     extensions: [],
+    bot: null,
+    botSend: { kind: "idle" },
     packs: { open: { id: 1, name: "Gatos que saltan" }, compatible: [] },
   };
+
+  const botEditor = (bot: Partial<BotState>): Partial<EditorView> => ({
+    extensions: [{ extension: builtinExtension, accepted: true, number: "34600000000" }],
+    bot: {
+      connection: { url: "https://equipo.red-ejemplo.ts.net", has_token: true, enabled: true },
+      status: { link: "linked", connection: "connected", active: false, code: null, qr: null, notice: null },
+      error: null,
+      ...bot,
+    },
+  });
 
   const done = (changes: object = {}) => ({
     kind: "done" as const,
@@ -266,6 +284,8 @@ export async function startDemo(initial: string | null): Promise<void> {
 
   const createdGifs: GifsView = {
     choosing: false,
+    choosingImages: false,
+    images: null,
     error: null,
     created: [
       { entry: 1, name: "gato-saltando.mp4", destination: "GIF para Discord", sizeBytes: 4_310_000, image: paths[0] ?? "", saving: false, saved: "gato-saltando.gif", saveError: null },
@@ -303,6 +323,7 @@ export async function startDemo(initial: string | null): Promise<void> {
     "Detalle · aviso de la comunidad": { nav: navigateTo({ kind: "pack", origin: "community", id: "perros-pixel" }), clicks: ['[data-focus="action-download"]'] },
     "Detalle · proponer a la comunidad": { nav: navigateTo({ kind: "pack", origin: "local", id: "2" }), clicks: ['[data-focus="propose"]'] },
     "Mis paquetes · copia de seguridad": { nav: inRoot("mis-packs") },
+    "Mis paquetes · Mi bot": { nav: inRoot("mis-packs"), clicks: [`input[data-accept="${builtinExtension.id}"]:not(:checked)`] },
     "Favoritos": { nav: inRoot("favorites") },
     "Búsqueda · gato": { nav: navigateTo({ kind: "search", query: "gato" }) },
     "Búsqueda · sin resultados": { nav: navigateTo({ kind: "search", query: "zzzz" }) },
@@ -339,7 +360,28 @@ export async function startDemo(initial: string | null): Promise<void> {
       stickers: { openedPack: 3, confirmation: { kind: "delete-pack", id: 3 } },
     },
     "Editor · video": { nav: editing(), editor: {} },
+    "Editor · bot en pausa": { nav: editing(), editor: botEditor({}) },
+    "Editor · bot no accesible": {
+      nav: editing(),
+      editor: botEditor({ status: null, error: { kind: "bot_unreachable", message: "no se puede llegar al bot" } }),
+    },
+    "Editor · enviado al bot desde el equipo": {
+      nav: editing(),
+      editor: {
+        ...botEditor({}),
+        botSend: {
+          kind: "done",
+          sent: true,
+          message: "Se guardó «gato-sticker.mp4» y se abrió el chat del bot. Adjunta ese video, pega como pie el texto ya copiado: sonido=5",
+          caption: "sonido=5",
+        },
+      },
+    },
     "Editor · modo Fácil": { nav: editing(), editor: { mode: "easy" } },
+    "Editor · video largo, modo Fácil": {
+      nav: editing(),
+      editor: { mode: "easy", duration: 300, clipRange: { start: 120, end: 126 }, clipNote: "Se ha vuelto al tramo original" },
+    },
     "Editor · modo Fácil, ajustando": { nav: editing(), editor: { mode: "easy", preparing: true } },
     "Editor · modo Fácil, resultado": {
       nav: editing(),
@@ -533,7 +575,9 @@ export async function startDemo(initial: string | null): Promise<void> {
     moveStart: register("start"),
     moveEnd: register("end"),
     moveRange: register("mover tramo"),
-    fitToTime: register("ajustar al tiempo"),
+    pickDuration: register("duración"),
+    autoFit: register("autoajuste"),
+    releaseDrag: register("soltar tramo"),
     pickSide: register("tamaño GIF"),
     changeSpeed: register("speed"),
     fitMax: register("ajustar al máximo"),
@@ -550,11 +594,21 @@ export async function startDemo(initial: string | null): Promise<void> {
     openFolder: register("abrir carpeta"),
     openWhatsapp: register("abrir WhatsApp"),
     sendToExtension: register("enviar a extensión"),
+    openBotPanel: register("abrir «Mi bot»"),
+    sendToBot: register("enviar al bot"),
     share: register("compartir"),
     sendToWhatsapp: register("enviar a WhatsApp"),
     addPack: register("añadir al paquete"),
   });
-  const gifs = createGifsView({ pickVideo: register("elegir video"), save: register("guardar gif") });
+  const gifs = createGifsView({
+    pickVideo: register("elegir video"),
+    pickImages: register("elegir imágenes"),
+    setImageSeconds: register("duración de cada imagen"),
+    setRepeat: register("repetir siempre"),
+    createFromImages: register("crear GIF"),
+    discardImages: register("descartar imágenes"),
+    save: register("guardar gif"),
+  });
   const download = createDownloadView({
     addLinks: async (text) => {
       console.info("demo: añadir enlaces", text);
@@ -574,7 +628,7 @@ export async function startDemo(initial: string | null): Promise<void> {
   function repaint(): void {
     const state = current;
     stickers.render({ ...stickersBase, library: { kind: "ready", value: demo.library() }, ...state.stickers, openedPack: liveNav.openedPack });
-    gifs.render({ choosing: false, error: null, created: [], ...state.gifs });
+    gifs.render({ choosing: false, choosingImages: false, images: null, error: null, created: [], ...state.gifs });
     download.render({ queue: emptyQueue(), sendingLinks: false, linksError: null, queueError: null, pasted: { kind: "inactive" }, saving: null, ...state.download });
     editor.render(liveNav.editor === null ? null : { ...editorVideo, ...state.editor });
     shell.render({ nav: liveNav, notice, noticeFolder });
@@ -637,7 +691,9 @@ export async function startDemo(initial: string | null): Promise<void> {
   });
   searchGif = createGifSearchSection(context, { api: demoGifs.api, fileUrl: (path) => path });
   createBackupSection({ api: demo.api, setLibrary: demo.setLibrary });
-  createExtensionsSection();
+  const bot = createBotMonitor(createBotDemoApi());
+  createExtensionsSection({ monitor: bot, platform, openWhatsapp: context.openWhatsapp });
+  void bot.load();
   catalog.onChange(detail.onCatalogChange);
   catalog.onChange(favorites.onCatalogChange);
   demo.onChange(() => repaint());

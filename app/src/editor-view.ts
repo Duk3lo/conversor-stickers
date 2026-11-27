@@ -1,7 +1,22 @@
 import { bottomAction } from "./bottom-bar.ts";
 import { sizeText } from "./queue.ts";
+import { PREVIEW_WINDOW_S } from "./contract.ts";
 import type { AlignUi, BackgroundUi, FramingModeUi, FramingSpecUi, PresetUi, PriorityUi, ShapeUi } from "./contract.ts";
-import { NUDGE_S, clipBarLabels, maxRangeS, readyMaxRange, shadedRegion } from "./clipbar.ts";
+import {
+  NUDGE_S,
+  barFraction,
+  clipBarLabels,
+  dragsWholeRange,
+  durationFits,
+  editorRecommendedS,
+  maxRangeS,
+  readyMaxRange,
+  secondAt,
+  shadedRegion,
+  snapMarginS,
+  zoomSpan,
+  type BarSpan,
+} from "./clipbar.ts";
 import { validateFps, validateSide } from "./custom-number.ts";
 import {
   PALETTE,
@@ -32,21 +47,25 @@ import {
   clampFraming,
   cropSquare,
   dragFraming,
+  pinchFraming,
   framingResetText,
   withZoom,
   zoomText,
 } from "./framing.ts";
 import { errorMessage } from "./messages.ts";
 import { sendTargets, soundDurationNotice, stillImageNotice } from "./extensions.ts";
+import { botBox, manualTargets } from "./bot-status.ts";
 import { canSaveClipVideo, clipVideoText, openWhatsappVisible } from "./clip-video.ts";
 import { soundText } from "./sound.ts";
 import { folderButtonVisible } from "./saved-folder.ts";
-import { playableNoVideoReason } from "./mobile.ts";
+import { playableNoVideoReason, previewMode } from "./mobile.ts";
 import { platform } from "./platform.ts";
 import { canSendToWhatsapp, canShareResult } from "./share.ts";
-import { secondInPreview } from "./preview.ts";
+import { secondInPreview, secondInVideo } from "./preview.ts";
+import { usesSoftwareRendering } from "./software-rendering.ts";
 import { resultDetail, progressFraction, resultSizeText, progressText } from "./progress.ts";
 import {
+  barScope,
   clipRangeDuration,
   LARGE_STEP_S,
   STEP_S,
@@ -73,6 +92,16 @@ function title(view: EditorView): string {
   return view.entry.media.kind === "image" ? "Sticker estático de WhatsApp" : "Sticker animado de WhatsApp";
 }
 
+interface ClipBar {
+  readonly track: HTMLDivElement;
+  readonly clipRange: HTMLDivElement;
+  readonly shade: HTMLDivElement;
+  readonly startHandle: HTMLDivElement;
+  readonly endHandle: HTMLDivElement;
+  /** What the bar covers as last painted. */
+  span: BarSpan | null;
+}
+
 export function createEditorView(actions: EditorActions): { render(view: EditorView | null): void } {
   const backButton = element<HTMLButtonElement>("editor-back");
   const editorTitle = element<HTMLHeadingElement>("editor-title");
@@ -84,12 +113,21 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   const previewMessage = element<HTMLParagraphElement>("preview-message");
   const videoControls = element<HTMLDivElement>("controls-video");
   const crop = element<HTMLDivElement>("crop");
-  const track = element<HTMLDivElement>("crop-track");
   const thumbs = element<HTMLDivElement>("crop-thumbs");
-  const shade = element<HTMLDivElement>("crop-shade");
   const nudges = element<HTMLDivElement>("crop-nudges");
   const cropOutput = element<HTMLParagraphElement>("crop-output");
-  const fitTimeButton = element<HTMLButtonElement>("fit-time");
+  const zoomBar = element<HTMLDivElement>("crop-zoom");
+  const zoomFrom = element<HTMLSpanElement>("crop-zoom-from");
+  const zoomTo = element<HTMLSpanElement>("crop-zoom-to");
+  const clipNote = element<HTMLParagraphElement>("clip-note");
+  const durations = element<HTMLDivElement>("crop-durations");
+  const autoFitButton = element<HTMLButtonElement>("auto-fit");
+  const playWholeButton = element<HTMLButtonElement>("play-whole");
+  const startHereButton = element<HTMLButtonElement>("start-here");
+  const playbackNote = element<HTMLParagraphElement>("playback-note");
+  const playbackButtons = element<HTMLDivElement>("playback-buttons");
+  // Showing a <video> blackens the whole window on software GL, so a still of the clip stands in.
+  const stillOnly = usesSoftwareRendering();
   const fpsCustom = element<HTMLInputElement>("fps-custom");
   const fpsError = element<HTMLParagraphElement>("fps-error");
   const sideBox = element<HTMLFieldSetElement>("side-box");
@@ -103,9 +141,22 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   const swatches = element<HTMLDivElement>("swatches");
   const colourCustom = element<HTMLInputElement>("colour-custom");
   const scaleChips = element<HTMLDivElement>("scale-chips");
-  const trackClipRange = element<HTMLDivElement>("crop-clip-range");
-  const startHandle = element<HTMLDivElement>("handle-start");
-  const endHandle = element<HTMLDivElement>("handle-end");
+  const generalBar: ClipBar = {
+    track: element<HTMLDivElement>("crop-track"),
+    clipRange: element<HTMLDivElement>("crop-clip-range"),
+    shade: element<HTMLDivElement>("crop-shade"),
+    startHandle: element<HTMLDivElement>("handle-start"),
+    endHandle: element<HTMLDivElement>("handle-end"),
+    span: null,
+  };
+  const zoomedBar: ClipBar = {
+    track: element<HTMLDivElement>("crop-zoom-track"),
+    clipRange: element<HTMLDivElement>("crop-zoom-clip-range"),
+    shade: element<HTMLDivElement>("crop-zoom-shade"),
+    startHandle: element<HTMLDivElement>("zoom-handle-start"),
+    endHandle: element<HTMLDivElement>("zoom-handle-end"),
+    span: null,
+  };
   const cropText = element<HTMLSpanElement>("crop-text");
   const speed = element<HTMLInputElement>("speed");
   const speedValue = element<HTMLOutputElement>("speed-value");
@@ -142,6 +193,15 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   const openWhatsappButton = element<HTMLButtonElement>("open-whatsapp");
   const extensionNotices = element<HTMLDivElement>("extension-notices");
   const extensionSends = element<HTMLDivElement>("extension-sends");
+  const botBoxNode = element<HTMLDivElement>("bot-box");
+  const botLine = element<HTMLParagraphElement>("bot-line");
+  const botOpenButton = element<HTMLButtonElement>("bot-open");
+  const botSendButton = element<HTMLButtonElement>("bot-send");
+  const botSendNote = element<HTMLParagraphElement>("bot-send-note");
+  const botCaptionBox = element<HTMLDivElement>("bot-caption-box");
+  const botCaption = element<HTMLElement>("bot-caption");
+  const botCaptionCopy = element<HTMLButtonElement>("bot-caption-copy");
+  const botCaptionCopied = element<HTMLSpanElement>("bot-caption-copied");
   const soundFolder = element<HTMLButtonElement>("sound-folder");
   const announcement = element<HTMLParagraphElement>("announcement");
   const createError = element<HTMLDivElement>("error-create");
@@ -285,6 +345,45 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   resetFraming.addEventListener("click", () => changeFraming({ center_x: 0.5, center_y: 0.5, zoom: 1 }));
 
   let squareDrag: { x: number; y: number; start: FramingSpecUi } | null = null;
+  // Fingers on the preview while cropping, as in WhatsApp: one moves the video, two pinch it. Easy mode
+  // shows only the result, without the square, so there the drag is on the preview itself.
+  const fingers = new Map<number, { x: number; y: number }>();
+  let pinch: { distance: number; start: FramingSpecUi } | null = null;
+  let resultDrag: { x: number; y: number; start: FramingSpecUi } | null = null;
+  const fingerDistance = (): number => {
+    const [a, b] = [...fingers.values()];
+    return a === undefined || b === undefined ? 0 : Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  preview.addEventListener("pointerdown", (event) => {
+    if (view === null || creating() || view.framing.mode !== "crop") return;
+    fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    resultDrag = square.hidden && fingers.size === 1 ? { x: event.clientX, y: event.clientY, start: view.framing } : null;
+    if (fingers.size === 2) {
+      squareDrag = null;
+      pinch = { distance: fingerDistance(), start: view.framing };
+    }
+  });
+  preview.addEventListener("pointermove", (event) => {
+    const size = sourceSize();
+    if (!fingers.has(event.pointerId) || size === null) return;
+    fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pinch !== null && fingers.size === 2) {
+      actions.setFraming(pinchFraming(pinch.start, pinch.distance, fingerDistance(), size.width, size.height));
+    } else if (resultDrag !== null) {
+      const box = previewFrame.getBoundingClientRect();
+      // The video follows the finger, so the crop moves the other way.
+      const [dx, dy] = [resultDrag.x - event.clientX, resultDrag.y - event.clientY];
+      actions.setFraming(dragFraming(resultDrag.start, dx, dy, box.width, box.height, size.width, size.height));
+    }
+  });
+  const liftFinger = (event: PointerEvent): void => {
+    fingers.delete(event.pointerId);
+    resultDrag = null;
+    if (fingers.size < 2) pinch = null;
+  };
+  // On the window: a finger can be lifted outside the preview.
+  window.addEventListener("pointerup", liftFinger);
+  window.addEventListener("pointercancel", liftFinger);
   square.addEventListener("pointerdown", (event) => {
     if (view === null || creating()) return;
     event.preventDefault();
@@ -342,6 +441,14 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     if (id !== undefined) actions.sendToExtension(id);
   });
   soundFolder.addEventListener("click", () => actions.openFolder("sounds"));
+  botOpenButton.addEventListener("click", () => actions.openBotPanel());
+  botSendButton.addEventListener("click", () => actions.sendToBot());
+  botCaptionCopy.addEventListener("click", () => {
+    navigator.clipboard.writeText(botCaption.textContent ?? "").then(
+      () => setText(botCaptionCopied, "Copiado."),
+      () => setText(botCaptionCopied, "No se pudo copiar: selecciona el texto y cópialo a mano."),
+    );
+  });
   shareButton.addEventListener("click", () => actions.share());
   sendWhatsappButton.addEventListener("click", () => actions.sendToWhatsapp());
   openAddButton.addEventListener("click", () => {
@@ -352,9 +459,12 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     if (packSelector.value !== "") actions.addPack(Number(packSelector.value));
   });
 
+  // «Reproducir todo el video»: the range stops repeating until it changes or the user goes back.
+  let playingWhole = false;
+
   function keepInClipRange(): void {
     const clipRange = view?.clipRange;
-    if (!clipRange || !currentUrl || failedPreview) return;
+    if (playingWhole || !clipRange || !currentUrl || failedPreview) return;
     const start = secondInPreview(clipRange.start, fromPreview);
     const end = secondInPreview(clipRange.end, fromPreview);
     if (video.currentTime >= end || video.currentTime < start - 0.25) video.currentTime = start;
@@ -380,7 +490,8 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
   video.addEventListener("timeupdate", keepInClipRange);
   video.addEventListener("loadedmetadata", goStartOfClipRange);
   video.addEventListener("ended", () => {
-    goStartOfClipRange();
+    if (playingWhole) video.currentTime = 0;
+    else goStartOfClipRange();
     play();
   });
   video.addEventListener("error", () => {
@@ -388,6 +499,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     failedPreview = true;
     console.warn("el video no se puede previsualizar", video.error?.message ?? "");
     renderPreviewMessage();
+    if (view) renderPlayback(view);
   });
   image.addEventListener("error", () => {
     if (image.getAttribute("src")) {
@@ -396,16 +508,31 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     }
   });
 
-  type Handle = "start" | "end";
-  let dragging: Handle | null = null;
-  let movingRange: { grab: number } | null = null;
+  playWholeButton.addEventListener("click", () => {
+    if (view === null) return;
+    playingWhole = !playingWhole;
+    if (playingWhole) video.currentTime = 0;
+    else goStartOfClipRange();
+    play();
+    renderPlayback(view);
+  });
+  startHereButton.addEventListener("click", () => {
+    if (view === null || creating()) return;
+    const instant = secondInVideo(video.currentTime, fromPreview);
+    playingWhole = false;
+    actions.moveRange(instant);
+    renderPlayback(view);
+    play();
+  });
 
-  function valueIn(clientX: number): number | null {
-    const duration = view?.duration;
-    if (!duration) return null;
-    const box = track.getBoundingClientRect();
-    const fraction = Math.min(Math.max((clientX - box.left) / box.width, 0), 1);
-    return fraction * duration;
+  type Handle = "start" | "end";
+  // `handle` is null while the whole range is being moved, held `grab` seconds after its start.
+  let drag: { bar: ClipBar; pointerId: number; handle: Handle | null; grab: number; before: ClipRange } | null = null;
+
+  function valueIn(bar: ClipBar, clientX: number): number | null {
+    if (bar.span === null) return null;
+    const box = bar.track.getBoundingClientRect();
+    return secondAt((clientX - box.left) / box.width, bar.span);
   }
 
   function move(handle: Handle, seconds: number): void {
@@ -413,39 +540,61 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     else actions.moveEnd(seconds);
   }
 
-  track.addEventListener("pointerdown", (event) => {
-    const clipRange = view?.clipRange;
-    const value = valueIn(event.clientX);
-    if (!clipRange || value === null || crop.getAttribute("aria-disabled") === "true") return;
-    event.preventDefault();
-    if (event.target !== startHandle && event.target !== endHandle && value > clipRange.start && value < clipRange.end) {
-      movingRange = { grab: value - clipRange.start };
-      track.setPointerCapture(event.pointerId);
-      return;
+  /** Ends the drag and repaints, so the zoomed bar is placed around the range again. */
+  function endDrag(pointerId: number, released: boolean): void {
+    if (drag === null || drag.pointerId !== pointerId) return;
+    const { bar, before } = drag;
+    drag = null;
+    const duration = view?.duration;
+    if (released && duration) {
+      const general = bar === generalBar ? { durationS: duration, widthPx: bar.track.getBoundingClientRect().width } : null;
+      actions.releaseDrag(before, snapMarginS(general));
     }
-    if (event.target === startHandle) dragging = "start";
-    else if (event.target === endHandle) dragging = "end";
-    else dragging = Math.abs(value - clipRange.start) <= Math.abs(value - clipRange.end) ? "start" : "end";
-    (dragging === "start" ? startHandle : endHandle).focus();
-    track.setPointerCapture(event.pointerId);
-    move(dragging, value);
-  });
-  track.addEventListener("pointermove", (event) => {
-    if (movingRange !== null) {
-      const value = valueIn(event.clientX);
-      if (value !== null) actions.moveRange(value - movingRange.grab);
-      return;
-    }
-    if (dragging === null) return;
-    const value = valueIn(event.clientX);
-    if (value !== null) move(dragging, value);
-  });
-  const drop = (): void => {
-    dragging = null;
-    movingRange = null;
-  };
-  track.addEventListener("pointerup", drop);
-  track.addEventListener("pointercancel", drop);
+    if (view) renderCrop(view);
+  }
+
+  function listenToBar(bar: ClipBar): void {
+    bar.track.addEventListener("pointerdown", (event) => {
+      const clipRange = view?.clipRange;
+      const value = valueIn(bar, event.clientX);
+      if (drag !== null || !clipRange || value === null || crop.getAttribute("aria-disabled") === "true") return;
+      event.preventDefault();
+      bar.track.setPointerCapture(event.pointerId);
+      const onHandle = event.target === bar.startHandle || event.target === bar.endHandle;
+      const inside = value > clipRange.start && value < clipRange.end;
+      const whole =
+        bar === generalBar && dragsWholeRange(clipRange, view?.duration ?? 0, bar.track.getBoundingClientRect().width);
+      if (whole || (!onHandle && inside)) {
+        // Touched outside a narrow range, it jumps there centred on the finger.
+        const grab = inside ? value - clipRange.start : (clipRange.end - clipRange.start) / 2;
+        drag = { bar, pointerId: event.pointerId, handle: null, grab, before: clipRange };
+        if (!inside) actions.moveRange(value - grab);
+        return;
+      }
+      let handle: Handle;
+      if (event.target === bar.startHandle) handle = "start";
+      else if (event.target === bar.endHandle) handle = "end";
+      else handle = Math.abs(value - clipRange.start) <= Math.abs(value - clipRange.end) ? "start" : "end";
+      drag = { bar, pointerId: event.pointerId, handle, grab: 0, before: clipRange };
+      (handle === "start" ? bar.startHandle : bar.endHandle).focus();
+      move(handle, value);
+    });
+    bar.track.addEventListener("pointermove", (event) => {
+      if (drag === null || drag.bar !== bar || drag.pointerId !== event.pointerId) return;
+      const value = valueIn(bar, event.clientX);
+      if (value === null) return;
+      if (drag.handle === null) actions.moveRange(value - drag.grab);
+      else move(drag.handle, value);
+    });
+    bar.track.addEventListener("pointerup", (event) => endDrag(event.pointerId, true));
+    bar.track.addEventListener("pointercancel", (event) => endDrag(event.pointerId, false));
+    bar.track.addEventListener("lostpointercapture", (event) => endDrag(event.pointerId, false));
+    bar.startHandle.addEventListener("keydown", (event) => keyboard("start", event));
+    bar.endHandle.addEventListener("keydown", (event) => keyboard("end", event));
+  }
+
+  listenToBar(generalBar);
+  listenToBar(zoomedBar);
 
   function keyboard(handle: Handle, event: KeyboardEvent): void {
     const clipRange = view?.clipRange;
@@ -476,9 +625,12 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     if (button.dataset.nudge === "start") actions.moveStart(clipRange.start + delta);
     else actions.moveEnd(clipRange.end + delta);
   });
-  fitTimeButton.addEventListener("click", () => actions.fitToTime());
-  startHandle.addEventListener("keydown", (event) => keyboard("start", event));
-  endHandle.addEventListener("keydown", (event) => keyboard("end", event));
+  durations.addEventListener("click", (event) => {
+    const choice = pressedButton(event)?.dataset["duration"];
+    if (choice === undefined || view === null || creating()) return;
+    actions.pickDuration(Number(choice));
+  });
+  autoFitButton.addEventListener("click", () => actions.autoFit());
 
   function renderDestinations(v: EditorView): void {
     destinations.hidden = v.presets.length === 0;
@@ -525,13 +677,30 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     }
   }
 
+  function renderStill(v: EditorView): void {
+    if (v.still === null) {
+      image.removeAttribute("src");
+      preview.dataset.state = "loading";
+      previewMessage.textContent = "Preparando la vista previa…";
+      return;
+    }
+    if (image.getAttribute("src") !== v.still) image.src = v.still;
+    image.alt = "Imagen fija del inicio del tramo";
+    preview.dataset.state = "ready";
+  }
+
   function renderVideo(v: EditorView): void {
+    if (stillOnly) {
+      renderStill(v);
+      return;
+    }
     video.defaultPlaybackRate = v.speed;
     video.playbackRate = v.speed;
     const url = v.preview.kind === "ready" ? v.preview.url : null;
     if (v.preview.kind === "ready") fromPreview = v.preview.fromS;
     if (url !== currentUrl) {
       currentUrl = url;
+      playingWhole = false;
       failedPreview = false;
       previousClipRange = null;
       if (currentUrl) {
@@ -543,6 +712,9 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
       }
     }
     const clipRange = v.clipRange;
+    if (previousClipRange && (clipRange?.start !== previousClipRange.start || clipRange.end !== previousClipRange.end)) {
+      playingWhole = false;
+    }
     if (currentUrl && clipRange && !failedPreview) {
       if (previousClipRange && clipRange.end !== previousClipRange.end && clipRange.start === previousClipRange.start) {
         video.currentTime = secondInPreview(Math.max(clipRange.start, clipRange.end - 1), fromPreview);
@@ -601,12 +773,22 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     previewContent.style.borderRadius = crop ? "0" : radius;
     square.style.borderRadius = crop ? radius : "0";
     square.hidden = !crop || resultOnly;
+    // A huge box-shadow may not be painted on software GL, so the still itself is dimmed and the
+    // square redraws the same image at full brightness, aligned with the frame.
+    const dimmed = stillOnly && v.still !== null && crop && !resultOnly;
+    preview.dataset.dim = String(dimmed);
+    square.style.backgroundImage = dimmed ? `url("${v.still}")` : "";
     if (crop) {
       const box = cropSquare(v.framing, size.width, size.height);
       square.style.left = `${box.left * 100}%`;
       square.style.top = `${box.top * 100}%`;
       square.style.width = `${box.width * 100}%`;
       square.style.height = `${box.height * 100}%`;
+      if (dimmed) {
+        square.style.backgroundSize = `${100 / box.width}% ${100 / box.height}%`;
+        const free = (side: number) => (side >= 1 ? 0 : 100 / (1 - side));
+        square.style.backgroundPosition = `${box.left * free(box.width)}% ${box.top * free(box.height)}%`;
+      }
     }
     for (const entry of framingControls.querySelectorAll<HTMLInputElement>("input[type=radio]")) {
       const current: Record<string, string> = {
@@ -643,8 +825,8 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     resetFraming.disabled = creating() || framingResetText(v.framing) === null;
   }
 
-  function renderHandle(handle: HTMLDivElement, value: number, duration: number, min: number, max: number): void {
-    handle.style.left = `${(value / duration) * 100}%`;
+  function renderHandle(handle: HTMLDivElement, value: number, span: BarSpan, min: number, max: number): void {
+    handle.style.left = `${barFraction(value, span) * 100}%`;
     handle.setAttribute("aria-valuemin", String(min));
     handle.setAttribute("aria-valuemax", String(max));
     handle.setAttribute("aria-valuenow", String(value));
@@ -665,37 +847,97 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     );
   }
 
+  function renderBar(bar: ClipBar, span: BarSpan, clipRange: ClipRange, duration: number, longest: number | null): void {
+    bar.span = span;
+    const percent = (second: number): number => barFraction(second, span) * 100;
+    bar.clipRange.style.left = `${percent(clipRange.start)}%`;
+    bar.clipRange.style.width = `${percent(clipRange.end) - percent(clipRange.start)}%`;
+    const region = longest === null ? null : shadedRegion(clipRange, longest, duration);
+    bar.shade.hidden = region === null;
+    if (region !== null) {
+      const left = percent(region.left * duration);
+      bar.shade.style.left = `${left}%`;
+      bar.shade.style.width = `${percent((region.left + region.width) * duration) - left}%`;
+    }
+    renderHandle(bar.startHandle, clipRange.start, span, 0, clipRange.end);
+    renderHandle(bar.endHandle, clipRange.end, span, clipRange.start, duration);
+  }
+
+  function renderZoomedBar(clipRange: ClipRange, duration: number, longest: number | null): void {
+    // While dragging, the window stays still so the pointer keeps meaning the same seconds.
+    const span = drag !== null && zoomedBar.span !== null ? zoomedBar.span : zoomSpan(clipRange, duration);
+    zoomBar.hidden = span === null;
+    if (span === null) {
+      zoomedBar.span = null;
+      return;
+    }
+    renderBar(zoomedBar, span, clipRange, duration, longest);
+    zoomFrom.textContent = secondsText(span.from);
+    zoomTo.textContent = secondsText(span.to);
+  }
+
+  function renderDurations(v: EditorView, active: boolean): void {
+    const recommended = editorRecommendedS(v);
+    for (const button of durations.querySelectorAll<HTMLButtonElement>("button[data-duration]")) {
+      const seconds = Number(button.dataset["duration"]);
+      button.disabled =
+        !active ||
+        v.preset === null ||
+        v.duration === null ||
+        !durationFits(seconds, v.duration, barScope(v.preset.max_duration_s));
+    }
+    const fitted =
+      v.clipRange !== null && recommended !== null && Math.abs(clipRangeDuration(v.clipRange) - recommended) < 0.05;
+    autoFitButton.textContent = recommended === null ? "Autoajuste" : `Autoajuste (${shortSecondsText(recommended)})`;
+    autoFitButton.disabled = !active || recommended === null || fitted;
+  }
+
+  function renderPlayback(v: EditorView): void {
+    playbackButtons.hidden = stillOnly;
+    if (stillOnly) {
+      showMessage(playbackNote, "Vista previa sin movimiento: este dispositivo no puede mostrar el video");
+      return;
+    }
+    const playable = currentUrl !== null && !failedPreview && v.clipRange !== null;
+    playWholeButton.disabled = !playable;
+    playWholeButton.textContent = playingWhole ? "Repetir el tramo" : "Reproducir todo el video";
+    startHereButton.disabled = !playable || creating();
+    const partial = playingWhole && previewMode(platform) === "window-webm" && (v.duration ?? 0) > PREVIEW_WINDOW_S;
+    showMessage(
+      playbackNote,
+      partial ? `La vista previa solo abarca ${PREVIEW_WINDOW_S} s del video, alrededor del tramo.` : null,
+    );
+  }
+
   function renderCrop(v: EditorView): void {
     const { clipRange, duration } = v;
     const active = clipRange !== null && duration !== null && duration > 0 && !creating();
     crop.setAttribute("aria-disabled", String(!active));
-    for (const handle of [startHandle, endHandle]) handle.tabIndex = active ? 0 : -1;
+    for (const bar of [generalBar, zoomedBar]) {
+      bar.startHandle.tabIndex = bar.endHandle.tabIndex = active ? 0 : -1;
+    }
     for (const button of nudges.querySelectorAll<HTMLButtonElement>("button")) button.disabled = !active;
     renderThumbnails(v.thumbnails);
+    renderDurations(v, active);
+    const note = v.clipNote ?? "";
+    // A live region is only announced when its text changes, so it is not rewritten on every render.
+    if (clipNote.textContent !== note) clipNote.textContent = note;
     if (clipRange === null || duration === null || duration <= 0) {
       cropText.textContent = "Sin video";
       cropOutput.textContent = "";
-      trackClipRange.style.width = "0%";
-      shade.style.width = "0%";
-      fitTimeButton.disabled = true;
+      generalBar.clipRange.style.width = "0%";
+      generalBar.shade.style.width = "0%";
+      generalBar.span = null;
+      zoomedBar.span = null;
+      zoomBar.hidden = true;
       return;
     }
-    trackClipRange.style.left = `${(clipRange.start / duration) * 100}%`;
-    trackClipRange.style.width = `${((clipRange.end - clipRange.start) / duration) * 100}%`;
     const longest = maxRangeS(v.preset, v.speed, readyMaxRange(v.estimate));
-    const region = longest === null ? null : shadedRegion(clipRange, longest, duration);
-    shade.hidden = region === null;
-    if (region !== null) {
-      shade.style.left = `${region.left * 100}%`;
-      shade.style.width = `${region.width * 100}%`;
-    }
-    renderHandle(startHandle, clipRange.start, duration, 0, clipRange.end);
-    renderHandle(endHandle, clipRange.end, duration, clipRange.start, duration);
+    renderBar(generalBar, { from: 0, to: duration }, clipRange, duration, longest);
+    renderZoomedBar(clipRange, duration, longest);
     const labels = clipBarLabels(clipRange, v.speed);
     cropText.textContent = `${labels.start} → ${labels.end} · ${labels.length}`;
     cropOutput.textContent = `Inicio ${labels.start}, fin ${labels.end}, tramo ${labels.length}. El resultado dura ${labels.output}.`;
-    const same = longest !== null && Math.abs(clipRangeDuration(clipRange) - Math.floor(longest * 10 + 1e-6) / 10) < 0.05;
-    fitTimeButton.disabled = !active || longest === null || same;
   }
 
   function renderSide(v: EditorView): void {
@@ -824,7 +1066,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     else createButton.removeAttribute("aria-disabled");
     cancelButton.hidden = !inCourse;
     createWithSoundButton.hidden = !canSaveClipVideo(platform, v.destination, v.entry.media);
-    createWithSoundButton.disabled = v.clipRange === null || v.clipVideo.kind === "saving";
+    createWithSoundButton.disabled = v.clipRange === null || v.clipVideo.kind === "saving" || v.botSend.kind === "running";
     clipVideoState.hidden = v.clipVideo.kind === "idle";
     clipVideoState.classList.toggle("message-error", v.clipVideo.kind === "failed");
     clipVideoState.textContent = clipVideoText(v.clipVideo);
@@ -834,7 +1076,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     soundState.textContent = soundText(v.sound);
     clipVideoFolder.hidden = !folderButtonVisible(platform, v.clipVideo.kind === "saved" ? "videos" : null);
     openWhatsappButton.hidden = !openWhatsappVisible(platform, v.clipVideo);
-    const targets = sendTargets(v.extensions, platform, v.clipVideo);
+    const targets = manualTargets(sendTargets(v.extensions, platform, v.clipVideo), v.bot);
     extensionSends.replaceChildren(
       ...targets.map(({ extension }) => {
         const button = create("button", "button-text", `Enviar a ${extension.name}`);
@@ -850,6 +1092,7 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
         .flatMap((text) => text ?? [])
         .map((text) => create("p", "secondary small", text)),
     );
+    renderBot(v, inCourse);
     soundFolder.hidden = !folderButtonVisible(platform, v.sound.kind === "saved" ? "sounds" : null);
     editorPanel.dataset["mode"] = v.mode;
     for (const entry of modeSwitch.querySelectorAll<HTMLInputElement>("input")) entry.checked = entry.value === v.mode;
@@ -878,6 +1121,33 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
     result.hidden = c.kind !== "done";
     editorPanel.dataset["bar"] = bottomAction(platform, "editor", c.kind === "done");
     if (c.kind === "done") renderResult(v, c);
+  }
+
+  /** Only on a real change, so screen readers do not repeat it every time the bot is asked. */
+  function setText(node: HTMLElement, text: string): void {
+    if (node.textContent !== text) node.textContent = text;
+  }
+
+  function renderBot(v: EditorView, creating: boolean): void {
+    const box = botBox(v.destination, v.entry.media, v.extensions, v.bot);
+    botBoxNode.hidden = box === null;
+    if (box === null) return;
+    setText(botLine, box.line);
+    setText(botOpenButton, box.panelLabel);
+    botOpenButton.disabled = creating || v.botSend.kind === "running";
+    const send = box.send;
+    botSendButton.hidden = send === null;
+    botSendButton.disabled =
+      send?.reason != null || creating || v.clipRange === null || v.clipVideo.kind === "saving" || v.botSend.kind === "running";
+    const state = v.botSend;
+    const hint = "Deja el tramo en 10 s como máximo, activa el bot si está en pausa, guarda el clip y lo envía.";
+    const note = state.kind === "running" ? state.text : state.kind === "done" ? state.message : (send?.reason ?? hint);
+    setText(botSendNote, send === null && state.kind === "idle" ? "" : note);
+    botSendNote.classList.toggle("message-error", state.kind === "done" && !state.sent);
+    const caption = state.kind === "done" ? state.caption : null;
+    botCaptionBox.hidden = caption === null;
+    if (caption !== botCaption.textContent) setText(botCaptionCopied, "");
+    setText(botCaption, caption ?? "");
   }
 
   function renderAdd(v: EditorView, c: Extract<Creation, { kind: "done" }>): void {
@@ -940,6 +1210,10 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
 
   return {
     render(fresh) {
+      if (fresh?.entry.id !== view?.entry.id) {
+        drag = null;
+        zoomedBar.span = null;
+      }
       view = fresh;
       if (fresh === null) {
         if (currentUrl !== null || video.getAttribute("src")) {
@@ -955,12 +1229,14 @@ export function createEditorView(actions: EditorActions): { render(view: EditorV
       editorTitle.textContent = title(fresh);
       file.textContent = fresh.entry.name;
       preview.dataset.media = fresh.entry.media.kind;
+      preview.dataset.still = String(stillOnly && esVideo);
       videoControls.hidden = !esVideo;
       renderDestinations(fresh);
       const reason = esVideo ? reasonForCreateNo(fresh) : null;
       if (esVideo) {
         renderVideo(fresh);
         renderVideoControls(fresh);
+        renderPlayback(fresh);
       } else {
         renderImage(fresh);
       }

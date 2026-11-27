@@ -74,6 +74,21 @@ impl RgbaImage {
     pub fn rgba(&self) -> &[u8] {
         &self.rgba
     }
+
+    /// Fast PNG, lossless and with no extra encoder: for stills shown by the interface.
+    pub fn to_png(&self) -> Result<Vec<u8>, crate::EncodingError> {
+        let mut png = Vec::new();
+        let mut encoder = png::Encoder::new(&mut png, self.width, self.height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_compression(png::Compression::Fast);
+        let mut writer = encoder.write_header().map_err(crate::EncodingError::Png)?;
+        writer
+            .write_image_data(&self.rgba)
+            .map_err(crate::EncodingError::Png)?;
+        writer.finish().map_err(crate::EncodingError::Png)?;
+        Ok(png)
+    }
 }
 
 pub(crate) fn image_bytes(width: u32, height: u32) -> Result<usize, ImageError> {

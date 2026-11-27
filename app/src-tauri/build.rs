@@ -7,11 +7,13 @@ const COMMANDS: &[&str] = &[
     "remove_entry",
     "preview",
     "timeline_thumbnails",
+    "video_still",
     "cancel_preview",
     "create",
     "cancel_creation",
     "estimate",
     "create_static",
+    "create_images_gif",
     "result",
     "save",
     "save_video",
@@ -59,16 +61,31 @@ const COMMANDS: &[&str] = &[
     "send_sticker_to_whatsapp",
     "open_saved_folder",
     "open_whatsapp",
+    "open_external",
 ];
 
-// Only in the `github` edition (`cfg(edition = "github")`, set by `main`): extensions and the link
-// downloader. In `play` they are neither declared nor granted.
+// Only in the `github` edition (`cfg(edition = "github")`, set by `main`): extensions, the link
+// downloader and the connection to the user's bot. In `play` they are neither declared nor granted.
 const GITHUB_COMMANDS: &[&str] = &[
     "add_links",
     "download_queue",
     "cancel_downloads",
     "install_extension",
     "send_to_bot",
+    "bot_connection",
+    "bot_connect",
+    "bot_connect_link",
+    "bot_connect_local",
+    "bot_receive_link",
+    "bot_accept_link",
+    "bot_reject_link",
+    "bot_disable",
+    "bot_status",
+    "bot_activate",
+    "bot_pause",
+    "bot_link",
+    "bot_unlink",
+    "bot_open_chat",
 ];
 
 // The KLIPY key is baked in as `BUNDLED_KLIPY_KEY` only if the build sets `KLIPY_KEY` explicitly

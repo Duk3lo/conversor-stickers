@@ -238,6 +238,48 @@ pub(crate) fn fit_with_padding(
     center(content, (content_side, content_side), canvas_side)
 }
 
+/// The image scaled to fit inside a `width`x`height` canvas, without distortion and centred on a
+/// transparent background.
+pub(crate) fn contain(
+    rgba: &[u8],
+    (image_width, image_height): (u32, u32),
+    (width, height): (u32, u32),
+) -> Result<Vec<u8>, ScalingError> {
+    let scale = |measure: u32, image: u32, canvas: u32, other: u32| {
+        // Fit by the tighter axis: `canvas / image` is the smaller ratio on that one.
+        let value =
+            (u64::from(measure) * u64::from(canvas) + u64::from(image) / 2) / u64::from(image);
+        u32::try_from(value).unwrap_or(other).clamp(1, other)
+    };
+    let (fitted_width, fitted_height) = if u64::from(width) * u64::from(image_height)
+        <= u64::from(height) * u64::from(image_width)
+    {
+        (width, scale(image_height, image_width, width, height))
+    } else {
+        (scale(image_width, image_height, height, width), height)
+    };
+    let fitted = if (fitted_width, fitted_height) == (image_width, image_height) {
+        rgba.to_vec()
+    } else {
+        resize(
+            &mut Resizer::new(),
+            rgba,
+            (image_width, image_height),
+            (fitted_width, fitted_height),
+            None,
+        )?
+    };
+    let mut canvas = vec![0; width as usize * height as usize * 4];
+    let left = ((width - fitted_width) / 2) as usize;
+    let above = ((height - fitted_height) / 2) as usize;
+    let row_width = fitted_width as usize * 4;
+    for (row, origin) in fitted.chunks_exact(row_width).enumerate() {
+        let start = ((above + row) * width as usize + left) * 4;
+        canvas[start..start + row_width].copy_from_slice(origin);
+    }
+    Ok(canvas)
+}
+
 fn center(
     content: &[u8],
     (width, height): (u32, u32),

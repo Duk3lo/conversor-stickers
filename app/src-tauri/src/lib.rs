@@ -2,7 +2,11 @@
 //! and stores them in packs. It is a library so Android can load it as a `cdylib`; `main.rs`
 //! only launches it on desktop.
 
+#[cfg(edition = "github")]
+mod bot;
 mod commands;
+#[cfg(edition = "github")]
+mod commands_bot;
 mod commands_community;
 #[cfg(edition = "github")]
 mod commands_extensions;
@@ -12,12 +16,15 @@ mod commands_packs;
 mod commands_video;
 mod community;
 mod contract;
+#[cfg(edition = "github")]
+mod contract_bot;
 mod contract_community;
 mod contract_gifs;
 mod direct_link;
 mod environment;
 #[cfg(edition = "github")]
 mod extensions;
+mod external;
 mod external_sticker;
 mod gif_providers;
 mod gifs;
@@ -42,13 +49,22 @@ use crate::session::Session;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| "warn".into());
+    // At `trace` the HTTP parser dumps raw bytes, which for the bot include the pairing code and QR.
+    #[cfg(edition = "github")]
+    let filter = match "ureq_proto=warn".parse() {
+        Ok(directive) => filter.add_directive(directive),
+        Err(_) => filter,
+    };
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "warn".into()))
+        .with_env_filter(filter)
         .with_target(false)
         .init();
     environment::prepare_webview();
 
-    let builder = tauri::Builder::default().plugin(tauri_plugin_dialog::init());
+    let builder = tauri::Builder::default()
+        .plugin(external::navigation_guard())
+        .plugin(tauri_plugin_dialog::init());
     // Only Rust uses it to open `content://` URIs; the webview has no `fs:*` permission.
     #[cfg(target_os = "android")]
     let builder = builder.plugin(tauri_plugin_fs::init());
@@ -67,6 +83,12 @@ pub fn run() {
             let community_cache = app.path().app_cache_dir()?.join("community");
             app.asset_protocol_scope()
                 .allow_directory(&community_cache, true)?;
+            #[cfg(edition = "github")]
+            app.manage(Arc::new(bot::PendingLink::default()));
+            #[cfg(edition = "github")]
+            app.manage(Arc::new(bot::ConnectionStore::new(bot::connection_file(
+                &app.path().app_data_dir()?,
+            ))));
             app.manage(Arc::new(CommunityState::new(
                 community_cache,
                 app.path().app_data_dir()?,
@@ -99,11 +121,13 @@ pub fn run() {
             commands::remove_entry,
             commands::preview,
             commands::timeline_thumbnails,
+            commands::video_still,
             commands::cancel_preview,
             commands::create,
             commands::cancel_creation,
             commands::estimate,
             commands::create_static,
+            commands::create_images_gif,
             commands::result,
             commands::save,
             commands_video::save_video,
@@ -153,8 +177,37 @@ pub fn run() {
             commands_mobile::send_sticker_to_whatsapp,
             commands_mobile::open_saved_folder,
             commands_mobile::open_whatsapp,
+            commands_mobile::open_external,
             #[cfg(edition = "github")]
             commands_mobile::send_to_bot,
+            #[cfg(edition = "github")]
+            commands_bot::bot_connection,
+            #[cfg(edition = "github")]
+            commands_bot::bot_connect,
+            #[cfg(edition = "github")]
+            commands_bot::bot_connect_link,
+            #[cfg(edition = "github")]
+            commands_bot::bot_connect_local,
+            #[cfg(edition = "github")]
+            commands_bot::bot_receive_link,
+            #[cfg(edition = "github")]
+            commands_bot::bot_accept_link,
+            #[cfg(edition = "github")]
+            commands_bot::bot_reject_link,
+            #[cfg(edition = "github")]
+            commands_bot::bot_disable,
+            #[cfg(edition = "github")]
+            commands_bot::bot_status,
+            #[cfg(edition = "github")]
+            commands_bot::bot_activate,
+            #[cfg(edition = "github")]
+            commands_bot::bot_pause,
+            #[cfg(edition = "github")]
+            commands_bot::bot_link,
+            #[cfg(edition = "github")]
+            commands_bot::bot_unlink,
+            #[cfg(edition = "github")]
+            commands_bot::bot_open_chat,
         ])
         .build(tauri::generate_context!());
     let app = match app {

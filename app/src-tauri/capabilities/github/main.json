@@ -1,12 +1,26 @@
 {
   "$schema": "../../gen/schemas/desktop-schema.json",
   "identifier": "main-github",
-  "description": "github edition only: extensions and link downloads. Not loaded in play.",
+  "description": "github edition only: extensions, link downloads and the bot connection. Not loaded in play.",
   "windows": ["main"],
   "permissions": [
     "allow-add-links",
     "allow-download-queue",
     "allow-cancel-downloads",
-    "allow-install-extension"
+    "allow-install-extension",
+    "allow-bot-connection",
+    "allow-bot-connect",
+    "allow-bot-connect-link",
+    "allow-bot-connect-local",
+    "allow-bot-receive-link",
+    "allow-bot-accept-link",
+    "allow-bot-reject-link",
+    "allow-bot-disable",
+    "allow-bot-status",
+    "allow-bot-activate",
+    "allow-bot-pause",
+    "allow-bot-link",
+    "allow-bot-unlink",
+    "allow-bot-open-chat"
   ]
 }

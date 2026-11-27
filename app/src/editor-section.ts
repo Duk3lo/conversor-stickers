@@ -1,5 +1,9 @@
 import { Channel } from "@tauri-apps/api/core";
 
+import type { BotMonitor } from "./bot-monitor.ts";
+import { closeBotPanelDialog, showBotPanelDialog, watchVisibility } from "./bot-panel.ts";
+import { ANDROID_DELIVERED, desktopDelivered, runBotSend } from "./bot-send.ts";
+import { acceptedBot } from "./bot-status.ts";
 import type { Context } from "./context.ts";
 import * as commands from "./contract.ts";
 import { type LibraryUi, asErrorUi, type PresetUi, type ProgressUi, type SaveVideoEvent } from "./contract.ts";
@@ -8,6 +12,7 @@ import { sentToWhatsappNotice } from "./share.ts";
 import { createEstimator, durationFix, reasonForCreateNo, requestOfEditor, fittingText } from "./editor.ts";
 import { easyReset, easyStep, easySummary, loadMode, RESET_NOTE, saveMode, type EditorMode } from "./easy.ts";
 import { planFit, fitPlanText } from "./fit.ts";
+import { element } from "./dom.ts";
 import { extensionCaption, loadExtensions } from "./extensions.ts";
 import { localStore } from "./store.ts";
 import { fitPriority, fpsAllowed } from "./fps.ts";
@@ -28,15 +33,18 @@ import {
   moveStart,
   clipRangeByDefault,
 } from "./crop.ts";
-import { fitToTime, maxRangeS, moveRange, readyMaxRange } from "./clipbar.ts";
+import { RESTORED_NOTE, editorRecommendedS, fitToTime, moveRange, snapToOriginal } from "./clipbar.ts";
+import { usesSoftwareRendering } from "./software-rendering.ts";
+import { createStillFollower } from "./still-follow.ts";
 import { platform } from "./platform.ts";
-import { initialSound, soundRequest } from "./sound.ts";
+import { MAX_SOUND_S, initialSound, soundRequest } from "./sound.ts";
 import { createEditorView } from "./editor-view.ts";
 import type { Creation, EditorView } from "./views.ts";
 
 const IMAGE_KINDS: Record<string, string> = { webp: "image/webp", gif: "image/gif", png: "image/png" };
 const PRESET_STICKER = "whatsapp-sticker";
 const THUMBNAILS = 10;
+const STILL_DEBOUNCE_MS = 250;
 
 export interface ReadyGif {
   entry: number;
@@ -59,12 +67,16 @@ export function createEditorSection(
     library(): LibraryUi | null;
     setLibrary(library: LibraryUi): void;
     onGifCreate(gif: ReadyGif): void;
+    /** `null` in `play`, which has no bot. */
+    bot: BotMonitor | null;
   },
 ): EditorSection {
   let view: EditorView | null = null;
   let all: PresetUi[] = [];
   let session = 0;
   let window: Window | null = null;
+  // The range the app put when the video was opened, which a drag can snap back to.
+  let originalClipRange: ClipRange | null = null;
   let estimateKey: string | null = null;
   const store = localStore();
   let mode: EditorMode = loadMode(store);
@@ -72,6 +84,16 @@ export function createEditorSection(
   let easy: { fitted: boolean; before: { speed: number; clipRange: ClipRange } } | null = null;
   // Changes made by the easy flow itself must not cancel it.
   let internal = false;
+
+  const stillOnly = usesSoftwareRendering();
+  const stillFollower = createStillFollower({
+    delayMs: STILL_DEBOUNCE_MS,
+    schedule: (run, delayMs) => setTimeout(run, delayMs),
+    cancel: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+    ask: (id, startS) => commands.videoStill(id, startS),
+    apply: (path) => update({ still: dependencies.fileUrl(path) }),
+    fail: (failure) => context.notify(`No se pudo mostrar el fotograma del video: ${errorMessage(asErrorUi(failure))}`),
+  });
 
   const byFile = previewMode(platform) === "file";
 
@@ -126,6 +148,13 @@ export function createEditorSection(
     if (creation.kind === "done" && creation.image !== null) URL.revokeObjectURL(creation.image);
   }
 
+  // Where video playback is not possible, a whole frame at the start of the clip stands in for it.
+  // Dragging the start fires many updates, so only the last one is asked for.
+  function followStill(): void {
+    if (!stillOnly || view === null || view.entry.media.kind !== "video" || view.clipRange === null) return;
+    stillFollower.follow(view.entry.id, view.clipRange.start);
+  }
+
   function update(changes: Partial<EditorView>): void {
     if (view === null) return;
     const previous = view.creation;
@@ -136,7 +165,10 @@ export function createEditorSection(
       if (!follows) dropImage(previous);
     }
     screen.render(view);
+    // A new still changes neither the window nor the estimate.
+    if (Object.keys(changes).every((key) => key === "still")) return;
     followClipRange();
+    followStill();
     estimate();
   }
 
@@ -194,7 +226,9 @@ export function createEditorSection(
   function change(changes: Partial<EditorView>): void {
     if (view === null || creating()) return;
     if (!internal) easy = null;
-    update({ fitting: null, easyNote: null, preparing: easy !== null, ...changes, creation: { kind: "inactive" } });
+    // The result of an earlier send says nothing about the new settings.
+    const botSend = view.botSend.kind === "done" ? ({ kind: "idle" } as const) : view.botSend;
+    update({ fitting: null, clipNote: null, easyNote: null, preparing: easy !== null, botSend, ...changes, creation: { kind: "inactive" } });
   }
 
   // Runs the fit of «Hacer que quepa» (once) and creates as soon as the estimate allows it.
@@ -264,6 +298,7 @@ export function createEditorSection(
   function open(id: number, destination: Destination): void {
     const entry = context.entry(id);
     session += 1;
+    stillFollower.reset();
     easy = null;
     if (entry === undefined || entry.media === null) {
       context.notify("No se pudo abrir lo elegido en el editor.");
@@ -275,6 +310,7 @@ export function createEditorSection(
     const duration = media.kind === "video" ? media.duration_s : null;
     estimateKey = null;
     window = null;
+    originalClipRange = preset && duration !== null ? clipRangeByDefault(duration, preset.max_duration_s) : null;
     view = {
       entry: { id: entry.id, name: entry.name, media },
       destination,
@@ -283,14 +319,16 @@ export function createEditorSection(
       preview: { kind: "empty" },
       image: media.kind === "image" ? dependencies.fileUrl(media.path) : null,
       duration,
-      clipRange: preset && duration !== null ? clipRangeByDefault(duration, preset.max_duration_s) : null,
+      clipRange: originalClipRange,
       speed: 1,
       fitting: null,
+      clipNote: null,
       priority: "balance",
       fps: null,
       framing: DEFAULT_FRAMING,
       sidePx: null,
       thumbnails: [],
+      still: null,
       fitPending: false,
       mode,
       preparing: false,
@@ -300,6 +338,8 @@ export function createEditorSection(
       sound: initialSound(media, entry.origin),
       clipVideo: { kind: "idle" },
       extensions: loadExtensions(store),
+      bot: dependencies.bot?.state() ?? null,
+      botSend: { kind: "idle" },
       packs: { open: null, compatible: [] },
     };
     update({});
@@ -326,6 +366,7 @@ export function createEditorSection(
     }
     session += 1;
     easy = null;
+    stillFollower.reset();
     dropImage(view.creation);
     view = null;
     window = null;
@@ -333,6 +374,11 @@ export function createEditorSection(
     preview.show(null);
     estimator.request(null);
     screen.render(null);
+  }
+
+  function setDuration(seconds: number): void {
+    if (view?.clipRange == null || view.duration === null) return;
+    change({ clipRange: fitToTime(view.clipRange, seconds, view.duration) });
   }
 
   function clipRangeLimit(): number | null {
@@ -478,10 +524,68 @@ export function createEditorSection(
     const soundS = view.clipRange.end - view.clipRange.start;
     try {
       // The saved clip is already cut to the chosen range, so only the sound length goes in the caption.
-      await mobileCommands.sendToBot(target.number, extensionCaption(target.extension, soundS));
+      await mobileCommands.sendToBot(target.number, extensionCaption(target.extension, soundS, view.framing));
     } catch (failure) {
       context.notify(errorMessage(asErrorUi(failure)));
     }
+  }
+
+  async function sendClipToBot(): Promise<void> {
+    const monitor = dependencies.bot;
+    if (monitor === null || view === null || view.clipRange === null || view.duration === null) return;
+    if (creating() || view.botSend.kind === "running" || view.clipVideo.kind === "saving") return;
+    const target = acceptedBot(view.extensions);
+    const number = target?.number ?? null;
+    if (target === null || number === null) return;
+    if (clipRangeDuration(view.clipRange) > MAX_SOUND_S) {
+      change({
+        clipRange: fitToTime(view.clipRange, MAX_SOUND_S, view.duration),
+        clipNote: `El tramo se ha recortado a ${MAX_SOUND_S} s para el bot.`,
+      });
+    }
+    if (view?.clipRange == null) return;
+    const sessionMy = session;
+    const id = view.entry.id;
+    const { startS, seconds } = soundRequest(view.clipRange);
+    // Rounded to the tenths of the bar: 4.999999 s must not become `sonido=4`.
+    const caption = extensionCaption(target.extension, Math.round(seconds * 10) / 10, view.framing);
+    let savedName: string | null = null;
+    update({ botSend: { kind: "running", text: "Consultando el bot…" }, clipVideo: { kind: "idle" } });
+    const outcome = await runBotSend({
+      status: () => monitor.run((api) => api.status()),
+      // The monitor queues the request, so the editor may be gone by the time it runs.
+      activate: () => monitor.run((api) => (sessionMy === session ? api.activate() : api.status())),
+      async save() {
+        const name = await commands.saveClipVideo(id, startS, seconds, new Channel<SaveVideoEvent>());
+        savedName = name;
+        return name;
+      },
+      async deliver(name) {
+        if (platform === "android") {
+          await mobileCommands.sendToBot(number, caption);
+          return ANDROID_DELIVERED;
+        }
+        // The webview may refuse to copy after the save dialog: then «Copiar pie» does it.
+        const copied = caption !== null && (await navigator.clipboard.writeText(caption).then(() => true, () => false));
+        await monitor.openChat(number);
+        return desktopDelivered(name, caption, copied);
+      },
+      abandoned: () => sessionMy !== session,
+      progress(text) {
+        if (sessionMy === session) update({ botSend: { kind: "running", text } });
+      },
+    });
+    if (sessionMy !== session) return context.notify(outcome.message);
+    const saved = savedName as string | null;
+    update({
+      botSend: { kind: "done", ...outcome, caption: platform === "desktop" && saved !== null ? caption : null },
+      // A saved clip that was not sent stays available to the manual send.
+      ...(saved !== null && !outcome.sent ? { clipVideo: { kind: "saved", name: saved } as const } : {}),
+    });
+  }
+
+  function openBotPanel(): void {
+    if (!creating()) showBotPanelDialog();
   }
 
   async function share(): Promise<void> {
@@ -576,10 +680,16 @@ export function createEditorSection(
       if (view?.clipRange == null || view.duration === null) return;
       change({ clipRange: moveRange(view.clipRange, startS, view.duration) });
     },
-    fitToTime() {
-      if (view?.clipRange == null || view.duration === null) return;
-      const longest = maxRangeS(view.preset, view.speed, readyMaxRange(view.estimate));
-      if (longest !== null) change({ clipRange: fitToTime(view.clipRange, longest, view.duration) });
+    pickDuration: setDuration,
+    autoFit() {
+      if (view === null) return;
+      const recommended = editorRecommendedS(view);
+      if (recommended !== null) setDuration(recommended);
+    },
+    releaseDrag(before, marginS) {
+      if (view?.clipRange == null || originalClipRange === null) return;
+      const original = snapToOriginal(originalClipRange, before, view.clipRange, marginS);
+      if (original !== null) change({ clipRange: original, clipNote: RESTORED_NOTE });
     },
     pickSide: (sidePx) => change({ sidePx }),
     changeSpeed: (speed) => change({ speed: boundSpeed(speed) }),
@@ -602,11 +712,23 @@ export function createEditorSection(
     openFolder: (folder) => context.openFolder(folder),
     openWhatsapp: () => context.openWhatsapp(),
     sendToExtension: (id) => void sendToExtension(id),
+    openBotPanel,
+    sendToBot: () => void sendClipToBot(),
     share: () => void share(),
     sendToWhatsapp: () => void sendToWhatsapp(),
     addPack: (id) => void addPack(id),
   });
   screen.render(null);
+
+  const bot = dependencies.bot;
+  if (bot !== null) {
+    watchVisibility(bot, "editor", element("bot-box"));
+    bot.subscribe((state) => {
+      if (view === null) return;
+      view = { ...view, bot: state };
+      screen.render(view);
+    });
+  }
 
   commands
     .presets()
@@ -614,14 +736,11 @@ export function createEditorSection(
       all = presets;
       if (view === null) return;
       const preset = view.entry.media.kind === "video" ? presetFor(view.destination, null) : null;
-      update({
-        presets: presetsDe(view.destination),
-        preset,
-        clipRange:
-          preset && view.duration !== null && view.clipRange === null
-            ? clipRangeByDefault(view.duration, preset.max_duration_s)
-            : view.clipRange,
-      });
+      let clipRange = view.clipRange;
+      if (preset && view.duration !== null && clipRange === null) {
+        clipRange = originalClipRange = clipRangeByDefault(view.duration, preset.max_duration_s);
+      }
+      update({ presets: presetsDe(view.destination), preset, clipRange });
     })
     .catch((failure: unknown) => {
       context.notify(`No se pudieron cargar los destinos: ${errorMessage(asErrorUi(failure))}`);
@@ -630,7 +749,11 @@ export function createEditorSection(
   return {
     onNavigate(nav) {
       const target = nav.editor;
-      if (target === null) return close();
+      if (target === null) {
+        // «Atrás» on the phone can leave the editor while the dialog is open over it.
+        closeBotPanelDialog();
+        return close();
+      }
       if (view?.entry.id === target.entry && view.destination === target.destination) return;
       open(target.entry, target.destination);
     },

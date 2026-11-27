@@ -43,7 +43,13 @@ export function saveMode(store: Store | null, mode: EditorMode): void {
 }
 
 export function easyReset(current: EasySettings): { settings: EasySettings; changed: boolean } {
-  return { settings: EASY_DEFAULTS, changed: JSON.stringify(current) !== JSON.stringify(EASY_DEFAULTS) };
+  // How the video is framed is also chosen in easy mode, so it stays.
+  const { mode, center_x, center_y, zoom } = current.framing;
+  const settings = { ...EASY_DEFAULTS, framing: { ...DEFAULT_FRAMING, mode, center_x, center_y, zoom } };
+  const changed = (Object.keys(settings) as (keyof EasySettings)[]).some(
+    (key) => JSON.stringify(current[key]) !== JSON.stringify(settings[key]),
+  );
+  return { settings, changed };
 }
 
 export type EasyStep = { readonly kind: "wait" | "fit" | "create" | "stop" };

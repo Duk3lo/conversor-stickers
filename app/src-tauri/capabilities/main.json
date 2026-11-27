@@ -10,11 +10,13 @@
     "allow-remove-entry",
     "allow-preview",
     "allow-timeline-thumbnails",
+    "allow-video-still",
     "allow-cancel-preview",
     "allow-create",
     "allow-cancel-creation",
     "allow-estimate",
     "allow-create-static",
+    "allow-create-images-gif",
     "allow-result",
     "allow-save",
     "allow-save-video",
@@ -51,6 +53,7 @@
     "allow-use-gif",
     "allow-klipy-stickers",
     "allow-klipy-categories",
-    "allow-add-klipy-sticker"
+    "allow-add-klipy-sticker",
+    "allow-open-external"
   ]
 }

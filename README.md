@@ -208,6 +208,26 @@ To build the APK you need Python 3.14 installed on the machine, because Chaquopy
 `yt-dlp` with pip. FFmpeg for Android is built by `app/src-tauri/ffmpeg-android/build.sh`; see its
 [README](app/src-tauri/ffmpeg-android/README.md).
 
+## Controlling the bot
+
+In the `github` edition the card of the bot extension has a «Mi bot» panel: it shows whether the bot is reachable,
+linked, paused or active, activates and pauses it, links its WhatsApp with a pairing code (or a QR on desktop)
+and unlinks it. Enter the bot address and the contents of its `control-token` file. The address must be
+`https://<host>.<tailnet>.ts.net` (Tailscale with `tailscale serve`, never Funnel), or `http://127.0.0.1:8787` on
+the bot computer itself. «Enviar al bot» in the editor keeps the clip within 10 s, saves it, activates the bot
+and hands it to WhatsApp (on desktop you attach the file yourself). The caption also carries the crop, zoom and
+position of «Recortar»; backgrounds and shapes are not sent. The bot repository documents its side.
+
+## Test APK
+
+```sh
+cd app && cargo tauri android build --debug --apk --target aarch64
+adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
+```
+
+The debug build is «Conversor (prueba)», with the `.prueba` application id suffix: it installs next to
+the published app and does not touch its data.
+
 ## Release APK
 
 Signed release APK for arm64 phones:

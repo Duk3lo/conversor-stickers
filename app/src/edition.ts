@@ -4,8 +4,3 @@ export function isGithubEdition(edition: string | undefined): boolean {
 }
 
 export const githubEdition = isGithubEdition(import.meta.env?.VITE_EDITION);
-
-/** Visible label that tells the github edition apart from the Play Store one. */
-export function editionBadge(edition: string | undefined): string | null {
-  return isGithubEdition(edition) ? "GitHub" : null;
-}

@@ -9,6 +9,27 @@ html[data-platform="android"] .app {
   padding: 8px 16px 0;
 }
 
+html[data-platform="android"] .app {
+  position: relative;
+}
+
+html[data-platform="android"] .header {
+  position: absolute;
+  top: 20px;
+  right: 16px;
+  padding: 0;
+}
+
+html[data-platform="android"] .header h1 {
+  display: none;
+}
+
+html[data-platform="android"] .panel > h2:first-child,
+html[data-platform="android"] .panel > .stack > h2:first-child,
+html[data-platform="android"] .panel > .stack > .title-row:first-child {
+  padding-right: 44px;
+}
+
 html[data-platform="android"] .body {
   flex: 1;
   padding-bottom: calc(var(--nav-bottom) + 88px);

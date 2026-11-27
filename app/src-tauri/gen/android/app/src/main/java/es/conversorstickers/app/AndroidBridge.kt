@@ -62,6 +62,11 @@ class BotRequest {
 }
 
 @InvokeArg
+class UrlRequest {
+  lateinit var url: String
+}
+
+@InvokeArg
 class FolderRequest {
   lateinit var kind: String
 }
@@ -71,6 +76,8 @@ class FolderRequest {
 class AndroidBridge(private val activity: Activity) : Plugin(activity) {
   private var webView: WebView? = null
   private val pending = Pending()
+  /** The bot connection link another app opened; Rust takes it once. It holds a token: never log it. */
+  @Volatile private var botLink: String? = null
   /** Package to open once `addResult` says "added"; null if WhatsApp should stay as it is. */
   private var openAfterAdd: String? = null
   /** The last clip saved to Movies, the one «Enviar al bot» sends. */
@@ -104,10 +111,14 @@ class AndroidBridge(private val activity: Activity) : Plugin(activity) {
     if (!receive(intent).isEmpty) {
       webView?.post { webView?.evaluateJavascript(SHARED_EVENT, null) }
     }
+    if (botLink != null) {
+      webView?.post { webView?.evaluateJavascript(BOT_LINK_EVENT, null) }
+    }
   }
 
   private fun receive(intent: Intent?): SharedIntent.Shared {
     if (intent == null) return SharedIntent.NOTHING
+    ExternalLinks.botLink(intent.action, intent.dataString)?.let { botLink = it }
     val uris = uris(intent)
     val mimes = uris.map { activity.contentResolver.getType(Uri.parse(it)) ?: intent.type }
     val shared =
@@ -115,6 +126,8 @@ class AndroidBridge(private val activity: Activity) : Plugin(activity) {
     pending.add(shared)
     // An intent that was already received is not read again if Android recreates the activity.
     intent.action = null
+    // The link carries the token: it must not stay in the intent or come back on recreation.
+    intent.data = null
     return shared
   }
 
@@ -139,6 +152,26 @@ class AndroidBridge(private val activity: Activity) : Plugin(activity) {
     }
     response.put("media", media)
     invoke.resolve(response)
+  }
+
+  /** The bot connection link another app opened, or `null`. Delivered only once. */
+  @Command
+  fun take_bot_link(invoke: Invoke) {
+    val link = botLink
+    botLink = null
+    invoke.resolve(JSObject().put("link", link ?: JSONObject.NULL))
+  }
+
+  /** Opens a web address in the system browser. Rejects anything but a known `https` site. */
+  @Command
+  fun open_url(invoke: Invoke) {
+    val url = ExternalLinks.openable(invoke.parseArgs(UrlRequest::class.java).url)
+    if (url == null) {
+      invoke.reject("dirección no permitida")
+      return
+    }
+    val view = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
+    if (start(view)) invoke.resolve() else invoke.reject("no hay navegador para abrir la dirección")
   }
 
   /**
@@ -321,6 +354,7 @@ class AndroidBridge(private val activity: Activity) : Plugin(activity) {
   companion object {
     /** The interface listens to this event and asks for `receive_shared`. */
     const val SHARED_EVENT = "window.dispatchEvent(new Event('android-shared'))"
+    const val BOT_LINK_EVENT = "window.dispatchEvent(new Event('android-bot-link'))"
   }
 
   /** Directory where Android extracted `libffmpeg.so` and `libffprobe.so`. */

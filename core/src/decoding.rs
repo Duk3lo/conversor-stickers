@@ -225,6 +225,38 @@ impl FfmpegDecoder {
             .ok_or(DecodingError::VideoWithoutFrames)
     }
 
+    /// The frame at `at_s` seconds with the video's own aspect ratio (no crop), scaled down so its
+    /// longer side is at most `max_side`. For stills where the framing square must match the video.
+    pub fn whole_frame_at(
+        &self,
+        at_s: f64,
+        max_side: u32,
+        cancellation: &AtomicBool,
+    ) -> Result<RgbaImage, DecodingError> {
+        let path = self.validate_file()?;
+        let scale = format!("min(1\\,{max_side}/max(iw*sar\\,ih))");
+        let filters = format!(
+            "scale=w=max(1\\,round(iw*sar*{scale})):h=max(1\\,round(ih*{scale})):flags=bilinear,\
+             setsar=1,format=rgba"
+        );
+        let mut command = Command::new(&self.ffmpeg_path);
+        command
+            .args(["-hide_banner", "-loglevel", "error", "-nostdin"])
+            .args(["-ss", &ffmpeg_seconds(at_s)])
+            .args(video_input(&path))
+            .args(["-an", "-sn", "-dn", "-vf", &filters])
+            .args(["-frames:v", "1"])
+            .args(["-f", "image2pipe", "-c:v", "pam", "pipe:1"]);
+        run(
+            command,
+            Stdio::null(),
+            &self.ffmpeg_path,
+            self.time_limit,
+            Some(cancellation),
+            read_pam,
+        )
+    }
+
     fn probe_video(&self, cancellation: Option<&AtomicBool>) -> Result<VideoInfo, DecodingError> {
         let path = self.validate_file()?;
         let mut command = Command::new(&self.ffprobe_path);
@@ -789,5 +821,30 @@ TUPLTYPE RGB_ALPHA\nENDHDR\n"
             ffmpeg_input(Path::new("/videos/concat:a.ts|-b.ts")),
             "file:/videos/concat:a.ts|-b.ts"
         );
+    }
+
+    #[test]
+    fn whole_frame_keeps_the_aspect_ratio_and_caps_the_longer_side() {
+        let directory = tempfile::tempdir().unwrap();
+        let video = directory.path().join("video.mp4");
+        let output = Command::new("ffmpeg")
+            .args(["-hide_banner", "-loglevel", "error", "-nostdin", "-y"])
+            .args(["-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=10"])
+            .args(["-t", "1", "-c:v", "mpeg4", "-pix_fmt", "yuv420p"])
+            .arg(&video)
+            .output()
+            .expect("hace falta ffmpeg para estas pruebas");
+        assert!(output.status.success());
+        let cancellation = AtomicBool::new(false);
+
+        let big = FfmpegDecoder::new(&video)
+            .whole_frame_at(0.5, 640, &cancellation)
+            .unwrap();
+        assert_eq!((big.width(), big.height()), (640, 360));
+
+        let tiny = FfmpegDecoder::new(&video)
+            .whole_frame_at(0.5, 2000, &cancellation)
+            .unwrap();
+        assert_eq!((tiny.width(), tiny.height()), (1280, 720));
     }
 }

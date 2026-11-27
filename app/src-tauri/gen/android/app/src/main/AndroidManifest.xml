@@ -38,6 +38,14 @@
                 <data android:mimeType="image/*" />
                 <data android:mimeType="video/*" />
             </intent-filter>
+            <!-- The bot's QR, scanned with the camera: conversorstickers://bot#u=...&t=... The app
+                 asks before saving anything. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="conversorstickers" android:host="bot" />
+            </intent-filter>
         </activity>
 
         <provider
